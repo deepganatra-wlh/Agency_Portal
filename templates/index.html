@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Agency Grid Processor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#07090f;--s1:#0d1017;--s2:#131822;--s3:#1a2030;
+  --b1:#1e2640;--b2:#28324e;--b3:#333e58;
+  --ac:#f59e0b;--ac2:#ef4444;--ac3:#10b981;--ac4:#6366f1;
+  --tx:#e8ecf7;--t2:#8898bb;--t3:#4a5a7a;
+  --fn:'Outfit',sans-serif;--mo:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;background:var(--bg);color:var(--tx);font-family:var(--fn);font-size:14px;}
+.app{display:grid;grid-template-columns:228px 1fr;min-height:100vh;}
+.sidebar{background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.logo{padding:20px 16px 16px;border-bottom:1px solid var(--b1);}
+.logo-badge{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--ac),#f97316);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:9px;}
+.logo h1{font-size:13.5px;font-weight:700;}
+.logo p{font-size:10px;color:var(--t3);font-family:var(--mo);margin-top:1px;}
+.nav{padding:10px 7px;flex:1;}
+.nl{font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:var(--t3);padding:8px 9px 3px;font-family:var(--mo);}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 9px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--t2);transition:all .15s;border:none;background:none;width:100%;text-align:left;font-family:var(--fn);}
+.ni:hover{background:var(--s3);color:var(--tx);}
+.ni.active{background:rgba(245,158,11,.1);color:var(--ac);}
+.nb{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--b3);display:flex;align-items:center;justify-content:center;font-size:9.5px;font-family:var(--mo);flex-shrink:0;}
+.ni.active .nb{border-color:var(--ac);color:var(--ac);background:rgba(245,158,11,.1);}
+.ni.done .nb{background:var(--ac3);border-color:var(--ac3);color:#07090f;}
+.sf{padding:10px 13px 18px;border-top:1px solid var(--b1);margin-top:auto;}
+
+.main{overflow-x:hidden;}
+.topbar{background:var(--s2);border-bottom:1px solid var(--b1);padding:10px 18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.mode-btn{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid var(--b2);background:transparent;color:var(--t2);transition:all .15s;font-family:var(--fn);}
+.mode-btn.ms{background:rgba(239,68,68,.1);border-color:var(--ac2);color:var(--ac2);}
+.mode-btn.mn{background:rgba(99,102,241,.1);border-color:var(--ac4);color:var(--ac4);}
+.mode-tag{font-size:11px;font-family:var(--mo);padding:3px 9px;border-radius:4px;}
+.mt-s{background:rgba(239,68,68,.1);color:var(--ac2);}
+.mt-n{background:rgba(99,102,241,.1);color:var(--ac4);}
+
+.panel{display:none;padding:26px 30px;max-width:1100px;}
+.panel.active{display:block;}
+.ph{margin-bottom:22px;}
+.ph h2{font-size:21px;font-weight:700;}
+.ph p{color:var(--t2);margin-top:5px;line-height:1.5;font-size:13px;}
+
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:13px;padding:18px;margin-bottom:14px;}
+.ct{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.bx{padding:2px 7px;border-radius:3px;font-size:9px;font-family:var(--mo);}
+.bx-am{background:rgba(245,158,11,.15);color:var(--ac);}
+.bx-gr{background:rgba(16,185,129,.12);color:var(--ac3);}
+.bx-re{background:rgba(239,68,68,.12);color:var(--ac2);}
+.bx-pu{background:rgba(99,102,241,.1);color:var(--ac4);}
+
+.uz{border:2px dashed var(--b3);border-radius:11px;padding:30px 18px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.uz:hover,.uz.drag{border-color:var(--ac);background:rgba(245,158,11,.03);}
+.uz.has-file{border-color:var(--ac3);background:rgba(16,185,129,.03);}
+.uz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;}
+.ui{font-size:26px;margin-bottom:7px;}
+.uz h3{font-size:13.5px;font-weight:600;margin-bottom:3px;}
+.uz p{color:var(--t2);font-size:11.5px;}
+.fc{display:inline-flex;align-items:center;gap:6px;background:var(--s3);border:1px solid var(--b2);padding:5px 10px;border-radius:6px;font-family:var(--mo);font-size:10.5px;margin-top:8px;}
+
+.fg{margin-bottom:11px;}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;}
+.fr4{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
+label{display:block;font-size:10.5px;font-family:var(--mo);color:var(--t2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;}
+input[type=text],input[type=number],select,textarea{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:7px;padding:8px 11px;color:var(--tx);font-family:var(--fn);font-size:13px;outline:none;transition:border .15s;}
+input:focus,select:focus,textarea:focus{border-color:var(--ac);}
+textarea{resize:vertical;min-height:80px;font-family:var(--mo);font-size:11px;line-height:1.6;}
+select option{background:var(--s2);}
+input[type=checkbox]{width:15px;height:15px;accent-color:var(--ac);cursor:pointer;margin-top:2px;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:7px;font-size:12.5px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--fn);}
+.btn-am{background:var(--ac);color:#07090f;font-weight:700;}
+.btn-am:hover{background:#d97706;}
+.btn-am:disabled{background:var(--b2);color:var(--t3);cursor:not-allowed;}
+.btn-sec{background:var(--s3);border:1px solid var(--b2);color:var(--tx);}
+.btn-sec:hover{border-color:var(--ac);color:var(--ac);}
+.btn-gr{background:var(--ac3);color:#07090f;font-weight:700;}
+.btn-re{background:rgba(239,68,68,.12);border:1px solid var(--ac2);color:var(--ac2);}
+.btn-lg{padding:10px 22px;font-size:13.5px;}
+.btn-sm{padding:4px 11px;font-size:11px;}
+.btn-xs{padding:3px 7px;font-size:10px;border-radius:4px;}
+.ar{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+
+.sb{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:8px;font-size:12.5px;margin-bottom:12px;}
+.sb-info{background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);color:var(--ac);}
+.sb-ok{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.2);color:var(--ac3);}
+.sb-err{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);color:var(--ac2);white-space:pre-wrap;font-family:var(--mo);font-size:11px;}
+.sp{width:13px;height:13px;border:2px solid rgba(245,158,11,.25);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;margin-top:1px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.tw{overflow-x:auto;border-radius:8px;border:1px solid var(--b1);}
+table{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mo);}
+thead{background:var(--s3);}
+th{padding:7px 10px;text-align:left;color:var(--t2);font-weight:500;border-bottom:1px solid var(--b1);white-space:nowrap;}
+td{padding:6px 10px;border-bottom:1px solid var(--b1);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+.stat{background:var(--s2);border:1px solid var(--b1);border-radius:11px;padding:13px 15px;}
+.stat .val{font-size:22px;font-weight:700;}
+.stat .lbl{font-size:9px;color:var(--t3);font-family:var(--mo);margin-top:3px;text-transform:uppercase;letter-spacing:.05em;}
+
+.divider{border:none;border-top:1px solid var(--b1);margin:16px 0;}
+.hint{font-size:10.5px;color:var(--t3);margin-top:3px;font-family:var(--mo);line-height:1.5;}
+
+/* Column config table */
+.cct{width:100%;border-collapse:collapse;}
+.cct th{background:var(--s3);padding:7px 9px;text-align:left;font-weight:500;color:var(--t2);font-family:var(--mo);font-size:9.5px;text-transform:uppercase;border-bottom:1px solid var(--b1);white-space:nowrap;}
+.cct td{padding:5px 8px;border-bottom:1px solid var(--b1);vertical-align:top;}
+.cct tr.matched td:first-child{border-left:2px solid var(--ac3);}
+.cct tr.unmatched td:first-child{border-left:2px solid var(--ac);}
+.cct input,.cct select,.cct textarea{background:var(--bg);border:1px solid var(--b2);border-radius:4px;padding:4px 7px;font-size:11px;color:var(--tx);width:100%;font-family:var(--fn);}
+.cct input:focus,.cct select:focus,.cct textarea:focus{border-color:var(--ac);}
+.cct textarea{min-height:46px;font-family:var(--mo);font-size:10px;resize:vertical;}
+
+.vg-row{display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:8px;align-items:end;margin-bottom:8px;}
+.chip{display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-family:var(--mo);margin:1px;}
+.chip-am{background:rgba(245,158,11,.12);color:var(--ac);}
+.chip-re{background:rgba(239,68,68,.1);color:var(--ac2);}
+.chip-gr{background:rgba(16,185,129,.1);color:var(--ac3);}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--s1)}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+.fade{animation:fadeIn .22s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{display:none}.panel{padding:14px}.stats-row,.fr3,.fr4{grid-template-columns:1fr 1fr}.fr{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-badge">⚡</div>
+    <h1>Agency Grid</h1>
+    <p>Special Motor Matrix Portal</p>
+  </div>
+  <nav class="nav">
+    <div class="nl">Workflow</div>
+    <button class="ni" id="ni-1" onclick="goStep(1)"><span class="nb" id="nb-1">1</span>Upload Files</button>
+    <button class="ni" id="ni-2" onclick="goStep(2)"><span class="nb" id="nb-2">2</span>Sheet &amp; Mode</button>
+    <button class="ni" id="ni-3" onclick="goStep(3)"><span class="nb" id="nb-3">3</span>Column Config</button>
+    <button class="ni" id="ni-4" onclick="goStep(4)"><span class="nb" id="nb-4">4</span>GWP &amp; Agent Map</button>
+    <button class="ni" id="ni-5" onclick="goStep(5)"><span class="nb" id="nb-5">5</span>RTO Config</button>
+    <button class="ni" id="ni-6" onclick="goStep(6)"><span class="nb" id="nb-6">6</span>Output Settings</button>
+    <button class="ni" id="ni-7" onclick="goStep(7)"><span class="nb" id="nb-7">7</span>Process &amp; Export</button>
+  </nav>
+  <div class="sf">
+    <div style="font-size:9.5px;color:var(--t3);font-family:var(--mo);margin-bottom:7px">MODE LOGIC</div>
+    <div style="font-size:11px;color:var(--t2);line-height:1.8;">
+      <span class="chip chip-re">Special</span> Block/IRDA/MISP/SYS → IRDA outgo<br/>
+      <span class="chip chip-am" style="background:rgba(99,102,241,.1);color:var(--ac4)">Normal</span> Block/IRDA etc → skip <b>that cell</b>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+<div class="topbar">
+  <button class="mode-btn ms" id="mode-special" onclick="setMode('special')">⚡ Special Mode</button>
+  <button class="mode-btn" id="mode-normal" onclick="setMode('normal')">📋 Normal Mode</button>
+  <span id="mode-tag" class="mode-tag mt-s">Special: IRDA/Block → set IRDA outgo</span>
+</div>
+
+<!-- ── Step 1: Upload ── -->
+<div class="panel active" id="p-1">
+  <div class="ph"><h2>Upload Files</h2><p>Upload the Special Motor Matrix Excel and optionally the RTO vs Cluster mapping file.</p></div>
+  <div class="card">
+    <div class="ct">Matrix Grid File <span class="bx bx-am">Required</span></div>
+    <div class="uz" id="uz-main" ondragover="doDrag(event,'main')" ondragleave="doDragLeave('main')" ondrop="doDrop(event,'main')">
+      <input type="file" id="fi-main" accept=".xlsx,.xlsb,.xls" onchange="handleFile('main')"/>
+      <div class="ui">📊</div>
+      <h3>Drop the Special Motor Matrix Excel</h3>
+      <p>.xlsx · up to 200 MB</p>
+      <div id="fd-main"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">RTO vs Cluster File <span class="bx bx-gr">Optional — enables RTO code lookup</span></div>
+    <div class="uz" id="uz-rto" ondragover="doDrag(event,'rto')" ondragleave="doDragLeave('rto')" ondrop="doDrop(event,'rto')">
+      <input type="file" id="fi-rto" accept=".xlsx,.xls" onchange="handleFile('rto')"/>
+      <div class="ui">🗺️</div>
+      <h3>RTO vs Cluster Excel</h3>
+      <p>Must contain: RTO CODE · PRODUCT CATEGORY · UW CLUSTER (25-26)</p>
+      <div id="fd-rto"></div>
+    </div>
+  </div>
+  <button class="btn btn-am btn-lg" id="btn-upload" onclick="doUpload()" disabled>Upload &amp; Continue →</button>
+</div>
+
+<!-- ── Step 2: Sheet & Mode ── -->
+<div class="panel" id="p-2">
+  <div class="ph"><h2>Sheet &amp; Mode Configuration</h2><p>Choose sheet, configure header row positions, and set value logic for Normal vs Special mode.</p></div>
+  <div class="card">
+    <div class="ct">Sheet &amp; Header Configuration</div>
+    <div class="fr3">
+      <div class="fg"><label>Data Sheet</label><select id="cfg-sheet"></select></div>
+      <div class="fg"><label>Header Row 1 — BIZ MIX group (e.g. 2)</label><input type="number" id="cfg-hr1" value="2" min="1"/></div>
+      <div class="fg"><label>Header Row 2 — Sub-category (e.g. 3)</label><input type="number" id="cfg-hr2" value="3" min="1"/></div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Header Row 3 — Data label row (e.g. 4)</label><input type="number" id="cfg-hr3" value="4" min="1"/></div>
+      <div class="fg"><label>Data Start Row (e.g. 5)</label><input type="number" id="cfg-dsr" value="5" min="1"/></div>
+      <div class="fg"><label>Rate Columns Start At Column #</label><input type="number" id="cfg-sc" value="13" min="1"/></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">Meta Column Positions <span class="bx bx-pu">1-indexed · set to 0 if column absent</span></div>
+    <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:11.5px;color:var(--ac4);">
+      <b>Std Grid sheets</b> (Agency-Comp-Expt, SATP etc.) have <b>no IMD Code / Name columns</b> — set those to <b>0</b>. The portal will then use UW Cluster and Vol Lower as the row identity instead. Rate columns on these sheets typically start at <b>col 4</b>.
+    </div>
+    <div class="fr4">
+      <div class="fg"><label>IMD Code</label><input type="number" id="mc-imd-code" value="1" min="1"/></div>
+      <div class="fg"><label>IMD Name</label><input type="number" id="mc-imd-name" value="2" min="1"/></div>
+      <div class="fg"><label>Relationship Code</label><input type="number" id="mc-rel" value="3" min="1"/></div>
+      <div class="fg"><label>IMD Type</label><input type="number" id="mc-imd-type" value="4" min="1"/></div>
+    </div>
+    <div class="fr4">
+      <div class="fg"><label>Vol Lower (Biz Vol)</label><input type="number" id="mc-vol-ll" value="5" min="1"/></div>
+      <div class="fg"><label>Vol Upper</label><input type="number" id="mc-vol-ul" value="6" min="1"/></div>
+      <div class="fg"><label>Vol Consideration</label><input type="number" id="mc-vol-rem" value="7" min="1"/></div>
+      <div class="fg"><label>UW Cluster / Outgo On</label><input type="number" id="mc-cluster" value="12" min="1"/></div>
+    </div>
+    <button class="btn btn-sec" onclick="doInspect()" style="margin-top:4px">🔍 Inspect Sheet Structure</button>
+  </div>
+  <div id="inspect-result"></div>
+  <div class="card">
+    <div class="ct">Value Logic Configuration</div>
+    <div class="fr">
+      <div>
+        <div class="fg">
+          <label>Values to ignore / trigger IRDA (one per line)</label>
+          <textarea id="ignore-vals" rows="5">Block
+NA
+IRDA
+MISP
+SYSTEM COMMISSION</textarea>
+          <div class="hint">Normal mode: these skip <b>that cell/column only</b> — the row continues for other columns. Special mode: these trigger IRDA outgo instead of skipping.</div>
+        </div>
+      </div>
+      <div>
+        <div class="fr">
+          <div class="fg"><label>IRDA Outgo Value</label><input type="text" id="irda-outgo" value="IRDA"/></div>
+          <div class="fg"><label>IRDA Prct Value</label><input type="text" id="irda-prct" value="-0.1"/></div>
+        </div>
+        <div class="fg"><label>Normal / GWP Outgo Value</label><input type="text" id="norm-outgo" value="GWP"/></div>
+        <div class="fg">
+          <label>Skip row if Vol Lower equals (header bleed guard)</label>
+          <input type="text" id="skip-vol-biz" value="Agency" placeholder="comma-separated values"/>
+          <div class="hint">Rows where Biz Vol column equals these values are skipped entirely.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ar">
+    <button class="btn btn-sec" onclick="goStep(1)">← Back</button>
+    <button class="btn btn-am btn-lg" id="btn-to-3" onclick="goStep(3)" disabled>Continue to Column Config →</button>
+  </div>
+</div>
+
+<!-- ── Step 3: Column Config ── -->
+<div class="panel" id="p-3">
+  <div class="ph">
+    <h2>Column Configuration</h2>
+    <p>Each rate column from the sheet is listed below with its auto-detected Biz Mix Output, RTO Category, and extra output fields. <span class="chip chip-gr">●</span> = auto-matched · <span class="chip chip-am">●</span> = manual needed.</p>
+  </div>
+  <div class="card">
+    <div class="ct">Rate Columns
+      <span class="bx bx-am" id="col-count-badge"></span>
+      <span class="bx bx-gr" id="col-match-badge"></span>
+      <button class="btn btn-sec btn-sm" onclick="addColRow()">+ Add Row</button>
+    </div>
+    <div style="overflow-x:auto;max-height:600px;overflow-y:auto;">
+    <table class="cct" id="col-cfg-table">
+      <thead><tr>
+        <th>#</th>
+        <th>Sheet Column</th>
+        <th style="min-width:130px">Biz Mix Output</th>
+        <th style="min-width:120px">RTO Category</th>
+        <th style="min-width:200px">Extra Output Fields (Key=Value, one per line)</th>
+        <th>Enable</th>
+      </tr></thead>
+      <tbody id="col-cfg-body"></tbody>
+    </table>
+    </div>
+    <p class="hint" style="margin-top:8px">Extra fields examples: <code>Fuel Type*=Diesel</code> · <code>Vehicle Age Ul*=5</code> · <code>Gross Vehicle Weight Ll*=12000.001</code></p>
+  </div>
+  <div class="ar">
+    <button class="btn btn-sec" onclick="goStep(2)">← Back</button>
+    <button class="btn btn-am btn-lg" onclick="goStep(4)">Continue →</button>
+  </div>
+</div>
+
+<!-- ── Step 4: GWP & Agent Map ── -->
+<div class="panel" id="p-4">
+  <div class="ph"><h2>GWP Columns &amp; Agent Group Map</h2>
+    <p>Map each unique Volume Consideration value to its GWP LL/UL output columns. Configure how IMD Types map to Agent Group Codes.</p>
+  </div>
+  <div class="card">
+    <div class="ct">Volume Consideration → GWP Column Mapping
+      <button class="btn btn-sec btn-sm" onclick="addVgRow()">+ Add</button>
+    </div>
+    <div id="vol-detected-hint" class="hint" style="margin-bottom:10px"></div>
+    <div id="vg-rows"></div>
+    <hr class="divider"/>
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--t2)">Default / Fallback GWP Columns</div>
+    <div class="fr3">
+      <div class="fg"><label>Default GWP LL Col</label><input type="text" id="std-ll" value="Total Gwp Ll*"/></div>
+      <div class="fg"><label>Default GWP UL Col</label><input type="text" id="std-ul" value="Total Gwp Ul*"/></div>
+      <div></div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Prime Broking GWP LL</label><input type="text" id="prime-ll" value="Total Gwp Ll*"/></div>
+      <div class="fg"><label>Prime Broking GWP UL</label><input type="text" id="prime-ul" value="Total Gwp Ul*"/></div>
+      <div></div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Agency / Key Broking GWP LL</label><input type="text" id="agency-ll" value="Totalgwp Keybrok Agency Ll*"/></div>
+      <div class="fg"><label>Agency / Key Broking GWP UL</label><input type="text" id="agency-ul" value="Totalgwp Keybrok Agency Ul*"/></div>
+      <div></div>
+    </div>
+    <div class="hint">For "std-grid" Vol Consideration: Prime Broking uses Prime cols; others use Agency cols.</div>
+  </div>
+  <div class="card">
+    <div class="ct">IMD Type → Agent Group Code Map
+      <button class="btn btn-sec btn-sm" onclick="addAgentRow()">+ Add</button>
+    </div>
+    <div id="agent-rows"></div>
+    <div class="hint" style="margin-top:6px">Detected IMD Types: <span id="imd-detected" style="color:var(--ac)">—</span></div>
+  </div>
+  <div class="ar">
+    <button class="btn btn-sec" onclick="goStep(3)">← Back</button>
+    <button class="btn btn-am btn-lg" onclick="goStep(5)">Continue →</button>
+  </div>
+</div>
+
+<!-- ── Step 5: RTO Config ── -->
+<div class="panel" id="p-5">
+  <div class="ph"><h2>RTO Configuration</h2><p>Configure RTO file structure and category normalization for accurate lookups.</p></div>
+  <div class="card">
+    <div class="ct">RTO File Structure</div>
+    <div class="fr3">
+      <div class="fg"><label>RTO Sheet Name</label><input type="text" id="rto-sheet" value="RTO Vs Cluster"/></div>
+      <div class="fg"><label>Header Row</label><input type="number" id="rto-hr" value="2" min="1"/></div>
+      <div></div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>RTO Code Column Header</label><input type="text" id="rto-col" value="RTO CODE"/></div>
+      <div class="fg"><label>Cluster Column Header</label><input type="text" id="rto-clu-col" value="UW CLUSTER (25-26)"/></div>
+      <div class="fg"><label>Category Column Header</label><input type="text" id="rto-cat-col" value="PRODUCT CATEGORY"/></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">Category Normalization <span class="bx bx-pu">source category → look up as</span>
+      <button class="btn btn-sec btn-sm" onclick="addNormRow()">+ Add</button>
+    </div>
+    <div id="norm-rows"></div>
+    <div class="hint">When RTO lookup for the original category returns nothing, it retries with the normalized name. If still nothing, falls back to ALL RTO codes.</div>
+  </div>
+  <div class="card">
+    <div class="ct">Output Column Names <span class="bx bx-am">customise to match your target schema</span></div>
+    <div class="fr3">
+      <div class="fg"><label>Span Outgo Column</label><input type="text" id="out-span-outgo" value="Span Outgo*"/></div>
+      <div class="fg"><label>Span Prct Column</label><input type="text" id="out-span-prct" value="Span Prct*"/></div>
+      <div class="fg"><label>RTO Code Column</label><input type="text" id="out-rto-code" value="Rto Code*"/></div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>RTO Cluster Column</label><input type="text" id="out-rto-clu" value="Rto Cluster*"/></div>
+      <div class="fg"><label>Parent Agent Code</label><input type="text" id="out-parent" value="Parent Agent Code*"/></div>
+      <div class="fg"><label>Primary Agent Code</label><input type="text" id="out-primary" value="Primary Agent Code*"/></div>
+    </div>
+    <div class="fr3">
+      <div class="fg"><label>Agent Group Code</label><input type="text" id="out-ag-grp" value="Agent Group Code*"/></div>
+      <div class="fg"><label>Biz Mix Column</label><input type="text" id="out-biz-mix" value="Biz Mix*"/></div>
+    </div>
+  </div>
+  <div class="ar">
+    <button class="btn btn-sec" onclick="goStep(4)">← Back</button>
+    <button class="btn btn-am btn-lg" onclick="goStep(6)">Continue →</button>
+  </div>
+</div>
+
+<!-- ── Step 6: Output Settings ── -->
+<div class="panel" id="p-6">
+  <div class="ph"><h2>Output Settings</h2><p>Set static fields that appear on every output row, and name the output file.</p></div>
+  <div class="card">
+    <div class="ct">Static Output Fields <span class="bx bx-am">written to every row</span>
+      <button class="btn btn-sec btn-sm" onclick="addStaticField()">+ Add</button>
+    </div>
+    <div id="static-rows"></div>
+    <div class="hint" style="margin-top:7px">Example: <code>Version Id* = my_grid_v1</code> · <code>Oem Type* = AGENCY</code></div>
+  </div>
+  <div class="card">
+    <div class="ct">Output File</div>
+    <div class="fg" style="max-width:340px"><label>Output CSV File Name</label><input type="text" id="out-fn" value="agency_grid_output"/></div>
+  </div>
+  <div class="ar">
+    <button class="btn btn-sec" onclick="goStep(5)">← Back</button>
+    <button class="btn btn-am btn-lg" onclick="goStep(7)">Review &amp; Process →</button>
+  </div>
+</div>
+
+<!-- ── Step 7: Process ── -->
+<div class="panel" id="p-7">
+  <div class="ph"><h2>Process &amp; Export</h2></div>
+  <div class="card" id="summary-card">
+    <div class="ct">Configuration Summary</div>
+    <div id="summary-body"></div>
+  </div>
+  <div class="card">
+    <div class="ct">Run Processor</div>
+    <div id="proc-status"></div>
+    <button class="btn btn-am btn-lg" id="btn-run" onclick="runProcess()">▶ Run Agency Grid Processor</button>
+  </div>
+  <div id="result-section" style="display:none" class="fade">
+    <div class="stats-row" id="result-stats"></div>
+    <div class="card">
+      <div class="ct">Output Preview (first 5 rows)</div>
+      <div class="tw" id="result-preview"></div>
+    </div>
+    <div class="card">
+      <div class="ct">Download</div>
+      <button class="btn btn-gr btn-lg" onclick="dlResult()">↓ Download CSV</button>
+    </div>
+  </div>
+  <div class="ar" style="margin-top:10px"><button class="btn btn-sec" onclick="goStep(6)">← Back</button></div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ──────────────── State ────────────────────────────────────────────────────────
+const S = {
+  mode:'special', sessionId:null, filepath:null, rtoPath:null, sheets:[],
+  inspectData:null, result:null,
+  colCfg:[],       // [{col_idx, display, parent_biz, sub_label, biz_mix_output, rto_category, extra_fields{}, enabled, matched}]
+  vgRows:[],       // [{vol_rem, ll_col, ul_col}]
+  agentRows:[],    // [{imd_type, code}]
+  normRows:[],     // [{from, to}]
+  staticFields:[]  // [{col, val}]
+};
+const files = {};
+
+// ──────────────── Mode ─────────────────────────────────────────────────────────
+function setMode(m) {
+  S.mode=m;
+  document.getElementById('mode-special').className='mode-btn'+(m==='special'?' ms':'');
+  document.getElementById('mode-normal').className ='mode-btn'+(m==='normal'?' mn':'');
+  const t=document.getElementById('mode-tag');
+  if(m==='special'){t.className='mode-tag mt-s';t.textContent='Special: IRDA/Block → output IRDA row';}
+  else{t.className='mode-tag mt-n';t.textContent='Normal: IRDA/Block → skip that cell only';}
+}
+
+// ──────────────── Navigation ───────────────────────────────────────────────────
+function goStep(n){
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',i+1===n));
+  document.querySelectorAll('.ni').forEach((b,i)=>b.classList.toggle('active',i+1===n));
+  if(n===7) buildSummary();
+  window.scrollTo(0,0);
+}
+function markDone(n){document.getElementById(`nb-${n}`)?.closest('.ni').classList.add('done');}
+
+// ──────────────── File Handling ────────────────────────────────────────────────
+function doDrag(e,t){e.preventDefault();document.getElementById(`uz-${t}`).classList.add('drag');}
+function doDragLeave(t){document.getElementById(`uz-${t}`).classList.remove('drag');}
+function doDrop(e,t){e.preventDefault();doDragLeave(t);if(e.dataTransfer.files[0])setFile(t,e.dataTransfer.files[0]);}
+function handleFile(t){const i=document.getElementById(`fi-${t}`);if(i.files[0])setFile(t,i.files[0]);}
+function setFile(t,f){
+  files[t]=f;
+  document.getElementById(`uz-${t}`).classList.add('has-file');
+  document.getElementById(`fd-${t}`).innerHTML=`<div class="fc">📄 ${esc(f.name)} (${(f.size/1024).toFixed(1)} KB)</div>`;
+  if(t==='main') document.getElementById('btn-upload').disabled=false;
+}
+
+async function doUpload(){
+  const btn=document.getElementById('btn-upload');
+  btn.disabled=true; btn.innerHTML='<div class="sp"></div> Uploading…';
+  const fd=new FormData();
+  fd.append('file',files['main']);
+  if(files['rto']) fd.append('rto_file',files['rto']);
+  try{
+    const r=await fetch('/api/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    if(d.error) throw new Error(d.error);
+    S.sessionId=d.session_id; S.filepath=d.filepath; S.rtoPath=d.rto_filepath; S.sheets=d.sheets;
+    const sel=document.getElementById('cfg-sheet');
+    sel.innerHTML=d.sheets.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    // Smart sheet selection
+    const prefs=['Special Matrix-Comp.-1-31','Special(different)-1-31','Special Matrix','Sheet1'];
+    for(const p of prefs) if(d.sheets.includes(p)){sel.value=p;break;}
+    markDone(1); btn.innerHTML='Upload &amp; Continue →'; btn.disabled=false;
+    goStep(2);
+  }catch(e){btn.disabled=false;btn.innerHTML='Upload &amp; Continue →';alert(e.message);}
+}
+
+// ──────────────── Inspect ─────────────────────────────────────────────────────
+async function doInspect(){
+  const el=document.getElementById('inspect-result');
+  el.innerHTML=`<div class="sb sb-info"><div class="sp"></div> Inspecting sheet structure…</div>`;
+  try{
+    const r=await fetch('/api/inspect',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        filepath:S.filepath,
+        sheet_name:document.getElementById('cfg-sheet').value,
+        header_rows:[+document.getElementById('cfg-hr1').value,
+                     +document.getElementById('cfg-hr2').value,
+                     +document.getElementById('cfg-hr3').value],
+        data_start_row:+document.getElementById('cfg-dsr').value,
+        start_col:+document.getElementById('cfg-sc').value
+      })});
+    const d=await r.json();
+    if(d.error) throw new Error(d.error);
+    S.inspectData=d;
+
+    const matched=d.col_defs.filter(c=>c.matched_default).length;
+    const total=d.col_defs.filter(c=>c.display&&c.display.trim()).length;
+
+    el.innerHTML=`<div class="card fade">
+      <div class="ct">Sheet Inspected
+        <span class="bx bx-am">${total} rate columns</span>
+        <span class="bx bx-gr">${matched} auto-matched</span>
+        <span class="bx bx-am">${d.max_row} data rows</span>
+      </div>
+      <div style="margin-bottom:8px">
+        ${d.col_defs.slice(0,25).map(c=>`<span class="chip ${c.matched_default?'chip-gr':'chip-am'}">${esc(c.display)}</span>`).join('')}
+        ${d.col_defs.length>25?`<span class="chip" style="background:var(--s3);color:var(--t2)">+${d.col_defs.length-25} more</span>`:''}
+      </div>
+    </div>`;
+
+    // Populate col config
+    S.colCfg = d.col_defs
+      .filter(c=>c.display && c.display.trim())
+      .map(c=>({
+        col_idx:c.col_idx, display:c.display,
+        parent_biz:c.parent_biz, sub_label:c.sub_label,
+        biz_mix_output:c.biz_mix_output, rto_category:c.rto_category,
+        extra_fields:c.extra_fields||{}, enabled:true, matched:c.matched_default
+      }));
+    renderColTable();
+    document.getElementById('col-count-badge').textContent=`${S.colCfg.length} cols`;
+    document.getElementById('col-match-badge').textContent=`${matched} auto-matched`;
+
+    // Populate IMD types
+    document.getElementById('imd-detected').textContent=d.imd_values.join(', ')||'—';
+    buildAgentRowsFromInspect(d.imd_values);
+
+    // Populate vol GWP rows
+    buildVgRowsFromInspect(d.vol_values);
+    document.getElementById('vol-detected-hint').innerHTML=
+      'Detected values: '+d.vol_values.map(v=>`<span class="chip chip-am">${esc(v)}</span>`).join('');
+
+    document.getElementById('btn-to-3').disabled=false;
+    markDone(2);
+  }catch(e){
+    el.innerHTML=`<div class="sb sb-err">❌ ${esc(e.message)}</div>`;
+  }
+}
+
+// ──────────────── Column Config Table ─────────────────────────────────────────
+function efToText(ef){ return Object.entries(ef||{}).map(([k,v])=>`${k}=${v}`).join('\n'); }
+function textToEf(t){
+  const o={};
+  (t||'').split('\n').forEach(l=>{const i=l.indexOf('=');if(i>0){o[l.slice(0,i).trim()]=l.slice(i+1).trim();}});
+  return o;
+}
+
+function renderColTable(){
+  const tbody=document.getElementById('col-cfg-body');
+  tbody.innerHTML=S.colCfg.map((c,i)=>`
+    <tr class="${c.matched?'matched':'unmatched'}">
+      <td style="color:var(--t3);font-size:10px;font-family:var(--mo);white-space:nowrap">
+        ${c.col_idx}<br/><span class="chip ${c.matched?'chip-gr':'chip-am'}">${c.matched?'auto':'manual'}</span>
+      </td>
+      <td style="font-family:var(--mo);font-size:10px;color:${c.matched?'var(--ac3)':'var(--ac)'}">
+        ${esc(c.display)}<br/>
+        <span style="color:var(--t3)">${esc(c.parent_biz)} | ${esc(c.sub_label)}</span>
+      </td>
+      <td><input type="text" value="${esc(c.biz_mix_output)}" onchange="S.colCfg[${i}].biz_mix_output=this.value"/></td>
+      <td><input type="text" value="${esc(c.rto_category)}" onchange="S.colCfg[${i}].rto_category=this.value"/></td>
+      <td><textarea onchange="S.colCfg[${i}].extra_fields=textToEf(this.value)">${esc(efToText(c.extra_fields))}</textarea></td>
+      <td style="text-align:center"><input type="checkbox" ${c.enabled?'checked':''} onchange="S.colCfg[${i}].enabled=this.checked"/></td>
+    </tr>`).join('');
+}
+
+function addColRow(){
+  S.colCfg.push({col_idx:0,display:'New',parent_biz:'',sub_label:'',biz_mix_output:'',rto_category:'',extra_fields:{},enabled:true,matched:false});
+  renderColTable();
+}
+
+// ──────────────── Vol GWP Rows ─────────────────────────────────────────────────
+const VOL_GWP_DEFAULTS = {
+  'tractor,harvester':{ll:'Totalgwp TractaHarvester Ll*',ul:'Totalgwp TractaHarvester Ul*'},
+  'tractor':          {ll:'Totalgwp Tractor Ll*',ul:'Totalgwp Tractor Ul*'},
+  'tractor old':      {ll:'Totalgwp Old Tractor Ll*',ul:'Totalgwp Old Tractor Ul*'},
+  'pcv-bus':          {ll:'Totalgwp PCV Bus Ll*',ul:'Totalgwp PCV Bus Ul*'},
+  'pcv-3w':           {ll:'PCV 3W GWP Ll*',ul:'PCV 3W GWP Ul*'},
+  'gcv 7.5t - 12t':   {ll:'Totalgwp 7500 12000 Ll*',ul:'Totalgwp 7500 12000 Ul*'},
+  'gcv 12t - 20t':    {ll:'Total GWP 12 20t Comp Ll*',ul:'Total GWP 12 20t Comp Ul*'},
+  'gcv <=2.5 t':      {ll:'GCV TP Less 2500 Total GWP Ll*',ul:'GCV TP Less 2500 Total GWP Ul*'},
+};
+
+function buildVgRowsFromInspect(volVals){
+  const added=new Set();
+  S.vgRows=[];
+  // First: detected vol values
+  volVals.forEach(v=>{
+    const d=VOL_GWP_DEFAULTS[v.toLowerCase()]||{ll:'',ul:''};
+    S.vgRows.push({vol_rem:v,ll_col:d.ll,ul_col:d.ul});
+    added.add(v.toLowerCase());
+  });
+  // Then add remaining defaults not yet seen
+  Object.entries(VOL_GWP_DEFAULTS).forEach(([k,v])=>{
+    if(!added.has(k)) S.vgRows.push({vol_rem:k,ll_col:v.ll,ul_col:v.ul});
+  });
+  renderVgRows();
+}
+
+function addVgRow(){S.vgRows.push({vol_rem:'',ll_col:'',ul_col:''});renderVgRows();}
+function renderVgRows(){
+  document.getElementById('vg-rows').innerHTML=S.vgRows.map((r,i)=>`
+    <div class="vg-row">
+      <div class="fg" style="margin:0"><label>Volume Consideration Value</label>
+        <input type="text" value="${esc(r.vol_rem)}" onchange="S.vgRows[${i}].vol_rem=this.value" placeholder="e.g. PCV-3W"/></div>
+      <div class="fg" style="margin:0"><label>GWP LL Output Column</label>
+        <input type="text" value="${esc(r.ll_col)}" onchange="S.vgRows[${i}].ll_col=this.value" placeholder="PCV 3W GWP Ll*"/></div>
+      <div class="fg" style="margin:0"><label>GWP UL Output Column</label>
+        <input type="text" value="${esc(r.ul_col)}" onchange="S.vgRows[${i}].ul_col=this.value" placeholder="PCV 3W GWP Ul*"/></div>
+      <button class="btn btn-xs btn-re" onclick="S.vgRows.splice(${i},1);renderVgRows()" style="margin-bottom:11px">✕</button>
+    </div>`).join('');
+}
+
+// ──────────────── Agent Map ────────────────────────────────────────────────────
+function buildAgentRowsFromInspect(imdVals){
+  const defaults={'Agency':'Agency','Key Broking':'Key_Broking','Prime Broking':'Prime_Broking'};
+  S.agentRows=Object.entries(defaults).map(([k,v])=>({imd_type:k,code:v}));
+  imdVals.forEach(v=>{if(!S.agentRows.find(r=>r.imd_type===v)) S.agentRows.push({imd_type:v,code:v});});
+  renderAgentRows();
+}
+function addAgentRow(){S.agentRows.push({imd_type:'',code:''});renderAgentRows();}
+function renderAgentRows(){
+  document.getElementById('agent-rows').innerHTML=S.agentRows.map((r,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
+      <input type="text" placeholder="IMD Type" value="${esc(r.imd_type)}" onchange="S.agentRows[${i}].imd_type=this.value" style="flex:1"/>
+      <span style="color:var(--t3);font-family:var(--mo);font-size:12px">→</span>
+      <input type="text" placeholder="Agent Group Code" value="${esc(r.code)}" onchange="S.agentRows[${i}].code=this.value" style="flex:1"/>
+      <button class="btn btn-xs btn-re" onclick="S.agentRows.splice(${i},1);renderAgentRows()">✕</button>
+    </div>`).join('');
+}
+
+// ──────────────── Norm Rows ────────────────────────────────────────────────────
+function initNormRows(){
+  S.normRows=[
+    {from:'PCV 3W',to:'PCV'},{from:'PCV-BUS',to:'PCV'},{from:'PCV-TAXI',to:'PCV'},
+    {from:'MISD',to:'MISC-D'},{from:'MISD GARBAGE',to:'MISC-D'},{from:'TRACTOR',to:'MISC-D'},
+  ];
+  renderNormRows();
+}
+function addNormRow(){S.normRows.push({from:'',to:''});renderNormRows();}
+function renderNormRows(){
+  document.getElementById('norm-rows').innerHTML=S.normRows.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1fr auto 1fr 30px;gap:8px;align-items:center;margin-bottom:6px">
+      <input type="text" placeholder="e.g. PCV 3W" value="${esc(r.from)}" onchange="S.normRows[${i}].from=this.value"/>
+      <span style="color:var(--t3);font-family:var(--mo)">→</span>
+      <input type="text" placeholder="e.g. PCV" value="${esc(r.to)}" onchange="S.normRows[${i}].to=this.value"/>
+      <button class="btn btn-xs btn-re" onclick="S.normRows.splice(${i},1);renderNormRows()">✕</button>
+    </div>`).join('');
+}
+
+// ──────────────── Static Fields ───────────────────────────────────────────────
+function initStaticFields(){
+  S.staticFields=[{col:'Version Id*',val:''}];
+  renderStaticFields();
+}
+function addStaticField(){S.staticFields.push({col:'',val:''});renderStaticFields();}
+function renderStaticFields(){
+  document.getElementById('static-rows').innerHTML=S.staticFields.map((r,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
+      <input type="text" placeholder="Output Column Name" value="${esc(r.col)}" onchange="S.staticFields[${i}].col=this.value" style="flex:1"/>
+      <span style="color:var(--t3);font-family:var(--mo)">=</span>
+      <input type="text" placeholder="Value for every row" value="${esc(r.val)}" onchange="S.staticFields[${i}].val=this.value" style="flex:1"/>
+      <button class="btn btn-xs btn-re" onclick="S.staticFields.splice(${i},1);renderStaticFields()">✕</button>
+    </div>`).join('');
+}
+
+// ──────────────── Summary ──────────────────────────────────────────────────────
+function buildSummary(){
+  const en=S.colCfg.filter(c=>c.enabled).length;
+  const ma=S.colCfg.filter(c=>c.matched&&c.enabled).length;
+  document.getElementById('summary-body').innerHTML=`
+    <div class="fr3">
+      <div><div class="hint">FILE</div><div style="font-family:var(--mo);font-size:11px;margin-top:4px;color:var(--ac)">${esc(S.filepath?.split('/').pop()||'—')}</div></div>
+      <div><div class="hint">MODE</div><div style="font-size:19px;font-weight:700;margin-top:3px;color:${S.mode==='special'?'var(--ac2)':'var(--ac4)'}">${S.mode.toUpperCase()}</div></div>
+      <div><div class="hint">RTO</div><div style="font-family:var(--mo);font-size:11px;margin-top:4px">${S.rtoPath?esc(S.rtoPath.split('/').pop()):'Not uploaded'}</div></div>
+    </div><hr class="divider">
+    <div class="fr4">
+      <div class="stat"><div class="val" style="color:var(--ac)">${en}</div><div class="lbl">Enabled Cols</div></div>
+      <div class="stat"><div class="val" style="color:var(--ac3)">${ma}</div><div class="lbl">Auto-Matched</div></div>
+      <div class="stat"><div class="val">${S.vgRows.filter(r=>r.vol_rem).length}</div><div class="lbl">GWP Maps</div></div>
+      <div class="stat"><div class="val">${S.staticFields.filter(r=>r.col).length}</div><div class="lbl">Static Fields</div></div>
+    </div>`;
+}
+
+// ──────────────── Run ──────────────────────────────────────────────────────────
+async function runProcess(){
+  const btn=document.getElementById('btn-run');
+  const st=document.getElementById('proc-status');
+  btn.disabled=true; btn.innerHTML='<div class="sp"></div> Processing — may take a minute for large files…';
+  st.innerHTML=`<div class="sb sb-info"><div class="sp"></div> Running transformation on ${S.inspectData?.max_row?.toLocaleString()||'?'} source rows — cells with ignored values are skipped individually per column…</div>`;
+  document.getElementById('result-section').style.display='none';
+
+  // Build config object
+  const meta_col_map={
+    imd_code:  {col_idx:+document.getElementById('mc-imd-code').value},
+    imd_name:  {col_idx:+document.getElementById('mc-imd-name').value},
+    rel_code:  {col_idx:+document.getElementById('mc-rel').value},
+    imd_type:  {col_idx:+document.getElementById('mc-imd-type').value},
+    vol_ll:    {col_idx:+document.getElementById('mc-vol-ll').value},
+    vol_ul:    {col_idx:+document.getElementById('mc-vol-ul').value},
+    vol_remark:{col_idx:+document.getElementById('mc-vol-rem').value},
+    uw_cluster:{col_idx:+document.getElementById('mc-cluster').value},
+  };
+
+  const vol_gwp_map={};
+  S.vgRows.filter(r=>r.vol_rem).forEach(r=>{vol_gwp_map[r.vol_rem]={ll_col:r.ll_col,ul_col:r.ul_col};});
+
+  const agent_group_map={};
+  S.agentRows.filter(r=>r.imd_type).forEach(r=>{agent_group_map[r.imd_type]=r.code;});
+
+  const rto_norm_map={};
+  S.normRows.filter(r=>r.from).forEach(r=>{rto_norm_map[r.from.toUpperCase()]=r.to;});
+
+  const output_static={};
+  S.staticFields.filter(r=>r.col).forEach(r=>{output_static[r.col]=r.val;});
+
+  const col_defs=S.colCfg.filter(c=>c.enabled&&c.col_idx).map(c=>({
+    col_idx:c.col_idx, biz_mix_output:c.biz_mix_output,
+    rto_category:c.rto_category, extra_fields:c.extra_fields
+  }));
+
+  const ignore_values=document.getElementById('ignore-vals').value.split('\n').map(v=>v.trim()).filter(Boolean);
+  const skip_vol_biz=document.getElementById('skip-vol-biz').value.split(',').map(v=>v.trim()).filter(Boolean);
+
+  const config={
+    sheet_name:document.getElementById('cfg-sheet').value,
+    header_rows:[+document.getElementById('cfg-hr1').value,+document.getElementById('cfg-hr2').value,+document.getElementById('cfg-hr3').value],
+    data_start_row:+document.getElementById('cfg-dsr').value,
+    meta_col_map, col_defs, mode:S.mode,
+    ignore_values, irda_values:ignore_values,
+    irda_prct_value:document.getElementById('irda-prct').value,
+    irda_outgo_value:document.getElementById('irda-outgo').value,
+    normal_outgo_value:document.getElementById('norm-outgo').value,
+    agent_group_map, vol_gwp_map,
+    std_gwp_ll_col:document.getElementById('std-ll').value,
+    std_gwp_ul_col:document.getElementById('std-ul').value,
+    prime_gwp_ll_col:document.getElementById('prime-ll').value,
+    prime_gwp_ul_col:document.getElementById('prime-ul').value,
+    agency_gwp_ll_col:document.getElementById('agency-ll').value,
+    agency_gwp_ul_col:document.getElementById('agency-ul').value,
+    output_static_fields:output_static,
+    rto_norm_map, skip_if_vol_biz:skip_vol_biz,
+    span_outgo_col:document.getElementById('out-span-outgo').value,
+    span_prct_col:document.getElementById('out-span-prct').value,
+    rto_code_col:document.getElementById('out-rto-code').value,
+    rto_cluster_col:document.getElementById('out-rto-clu').value,
+    parent_agent_col:document.getElementById('out-parent').value,
+    primary_agent_col:document.getElementById('out-primary').value,
+    agent_group_col:document.getElementById('out-ag-grp').value,
+    biz_mix_col:document.getElementById('out-biz-mix').value,
+  };
+
+  try{
+    const r=await fetch('/api/process',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        filepath:S.filepath, rto_filepath:S.rtoPath,
+        session_id:S.sessionId,
+        output_name:document.getElementById('out-fn').value||'agency_output',
+        rto_sheet:document.getElementById('rto-sheet').value,
+        rto_header_row:+document.getElementById('rto-hr').value,
+        rto_col:document.getElementById('rto-col').value,
+        rto_cluster_col:document.getElementById('rto-clu-col').value,
+        rto_cat_col:document.getElementById('rto-cat-col').value,
+        config
+      })});
+    const d=await r.json();
+    if(d.error) throw new Error(d.trace||d.error);
+    S.result=d;
+    st.innerHTML=`<div class="sb sb-ok">✓ Done! ${d.rows.toLocaleString()} output rows · ${d.skipped_rows.toLocaleString()} blank rows skipped · ${d.skipped_cells.toLocaleString()} empty/ignored cells skipped</div>`;
+    btn.innerHTML='▶ Run Agency Grid Processor'; btn.disabled=false;
+    document.getElementById('result-stats').innerHTML=`
+      <div class="stat"><div class="val" style="color:var(--ac)">${d.rows.toLocaleString()}</div><div class="lbl">Output Rows</div></div>
+      <div class="stat"><div class="val" style="color:var(--ac3)">${d.cols}</div><div class="lbl">Columns</div></div>
+      <div class="stat"><div class="val" style="color:var(--t2)">${d.skipped_rows.toLocaleString()}</div><div class="lbl">Blank Rows Skipped</div></div>
+      <div class="stat"><div class="val" style="color:var(--t3)">${d.skipped_cells.toLocaleString()}</div><div class="lbl">Cells Skipped</div></div>`;
+    if(d.preview?.length){
+      const cols=d.columns||Object.keys(d.preview[0]); const show=cols.slice(0,10);
+      document.getElementById('result-preview').innerHTML=`<table>
+        <thead><tr>${show.map(c=>`<th>${esc(c)}</th>`).join('')}${cols.length>10?`<th style="color:var(--t3)">+${cols.length-10} more</th>`:''}</tr></thead>
+        <tbody>${d.preview.map(row=>`<tr>${show.map(c=>`<td title="${esc(row[c]||'')}">${esc(row[c]||'')}</td>`).join('')}${cols.length>10?'<td>…</td>':''}</tr>`).join('')}</tbody>
+      </table>`;
+    }
+    document.getElementById('result-section').style.display='block';
+    markDone(7);
+  }catch(e){
+    st.innerHTML=`<div class="sb sb-err">❌ ${esc(e.message)}</div>`;
+    btn.disabled=false; btn.innerHTML='▶ Run Agency Grid Processor';
+  }
+}
+
+function dlResult(){if(S.result) window.location.href=`/api/download/${S.result.output_filename}`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ──────────────── Init ─────────────────────────────────────────────────────────
+setMode('special');
+initNormRows();
+initStaticFields();
+renderAgentRows();
+renderVgRows();
+</script>
+</body>
+</html>
