@@ -798,7 +798,6 @@ function loadOutputCsvHeaders(input){
       const text = e.target.result;
       // Parse only the first line (header row) — handle quoted headers too
       const firstLine = text.split(/\r?\n/)[0];
-      // Simple CSV header parser: handles quoted fields with commas inside
       const headers = [];
       let cur = '', inQ = false;
       for(let i=0;i<firstLine.length;i++){
@@ -808,14 +807,61 @@ function loadOutputCsvHeaders(input){
         else { cur+=ch; }
       }
       if(cur.trim()) headers.push(cur.trim());
-
       if(!headers.length){ statusEl.style.color='var(--re)'; statusEl.textContent='No headers found'; return; }
 
-      S.outputFormat = headers.map(h=>({col:h, rename:''}));
+      // Build a list of all known processor-side column names from inspection data
+      // These are the names the processor actually writes into the DataFrame
+      const inspectCols = [];
+      if(S.inspectData){
+        (S.inspectData.meta_defs||[]).forEach(c=>inspectCols.push(c.display));
+        (S.inspectData.col_defs||[]).forEach(c=>inspectCols.push(c.display));
+      }
+      // Also include well-known processor output column names (from config defaults)
+      const knownProcessorCols = [
+        'Version Id*','Parent Agent Code*','Primary Agent Code*','Agent Group Code*',
+        'Biz Mix*','Span Outgo*','Span Prct*','Rto Code*','Rto Cluster*',
+        'Total Gwp Ll*','Total Gwp Ul*','Totalgwp Keybrok Agency Ll*','Totalgwp Keybrok Agency Ul*',
+        'Totalgwp Pvt Car Ll*','Totalgwp Pvt Car Ul*','Totalgwp Pvtcar1plus1 Ll*','Totalgwp Pvtcar1plus1 Ul*',
+        'Totalgwp Satp Ll*','Totalgwp Satp Ul*','Totalgwp Tractor Ll*','Totalgwp Tractor Ul*',
+        'Gross Vehicle Weight Ll*','Gross Vehicle Weight Ul*',
+        'Cubic Capacity Ll*','Cubic Capacity Ul*',
+        'Ncb Ll*','Ncb Ul*','Vehicle Age Ll*','Vehicle Age Ul*',
+        'Two Wheeler Category*','Type Of Business*','Fuel Type*','Body Type*','Bus Type*',
+        ...inspectCols
+      ];
+      const allCols = [...new Set(knownProcessorCols)];
+
+      // Helper: normalize a string for fuzzy matching
+      // "parent_agent_code" → "parentagentcode", "Parent Agent Code*" → "parentagentcode"
+      function norm(s){ return s.toLowerCase().replace(/[\s_\-*]+/g,''); }
+
+      const normMap = {};
+      allCols.forEach(c=>{ normMap[norm(c)] = c; });
+
+      let matched=0, unmatched=0;
+      S.outputFormat = headers.map(h=>{
+        const procCol = normMap[norm(h)];
+        if(procCol){
+          matched++;
+          // If the CSV header is already identical to the processor col name, no rename needed
+          const rename = (h === procCol) ? '' : h;
+          return {col: procCol, rename};
+        } else {
+          unmatched++;
+          // Can't auto-match — put the CSV header in col so user can fix it manually
+          return {col: h, rename: ''};
+        }
+      });
+
       renderOutputFormat();
-      statusEl.style.color='var(--ac3)';
-      statusEl.textContent = `✓ ${headers.length} columns loaded`;
-      // Reset input so same file can be re-uploaded if needed
+      statusEl.style.color = unmatched > 0 ? 'var(--ac2)' : 'var(--ac3)';
+      statusEl.textContent = unmatched > 0
+        ? `✓ ${matched} matched, ⚠ ${unmatched} unmatched (highlighted)`
+        : `✓ ${headers.length} columns matched`;
+
+      // Re-render with highlight flags for unmatched rows
+      const flags = headers.map(h=>!normMap[norm(h)]);
+      if(unmatched > 0) renderOutputFormat(flags);
       input.value='';
     } catch(err){
       statusEl.style.color='var(--re)';
@@ -838,25 +884,24 @@ function autoFillOutputCols(){
 
 function addOutputCol(){S.outputFormat.push({col:'',rename:''});renderOutputFormat();}
 
-function renderOutputFormat(){
+function renderOutputFormat(unmatchedFlags){
   const rows = S.outputFormat;
   document.getElementById('output-format-rows').innerHTML = rows.length===0
     ? '<div style="color:var(--t3);font-size:12px;padding:6px 0">No columns configured — all columns will be output in default order.</div>'
-    : rows.map((r,i)=>`
-    <div class="of-row" draggable="true"
-      ondragstart="S._dragIdx=${i}"
-      ondragover="event.preventDefault()"
-      ondrop="ofDrop(event,${i})"
-      style="display:flex;gap:8px;align-items:center;margin-bottom:6px;cursor:grab">
-      <span style="color:var(--t3);cursor:grab;font-size:16px;padding:0 4px;flex-shrink:0">☰</span>
-      <span style="color:var(--t3);font-family:var(--mo);font-size:10px;min-width:18px;text-align:right">${i+1}</span>
-      <input type="text" placeholder="Column name (exact)" value="${esc(r.col)}"
-        onchange="S.outputFormat[${i}].col=this.value" style="flex:2;min-width:140px"/>
-      <span style="color:var(--t3);font-family:var(--mo);font-size:11px">→</span>
-      <input type="text" placeholder="Rename (optional)" value="${esc(r.rename)}"
-        onchange="S.outputFormat[${i}].rename=this.value" style="flex:2;min-width:120px"/>
-      <button class="btn btn-xs btn-re" onclick="S.outputFormat.splice(${i},1);renderOutputFormat()">✕</button>
-    </div>`).join('');
+    : rows.map((r,i)=>{
+      const warn = unmatchedFlags && unmatchedFlags[i];
+      const rowBorder = warn ? 'border:1px solid var(--ac2);border-radius:6px;padding:3px 4px;' : '';
+      const warnIcon = warn ? '<span title="Could not auto-match — fix column name" style="color:var(--ac2);font-size:13px;flex-shrink:0">&#9888;</span>' : '';
+      return '<div class="of-row" draggable="true" ondragstart="S._dragIdx='+i+'" ondragover="event.preventDefault()" ondrop="ofDrop(event,'+i+')" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;cursor:grab;'+rowBorder+'">'
+        + '<span style="color:var(--t3);cursor:grab;font-size:16px;padding:0 4px;flex-shrink:0">&#9776;</span>'
+        + '<span style="color:var(--t3);font-family:var(--mo);font-size:10px;min-width:18px;text-align:right">'+(i+1)+'</span>'
+        + '<input type="text" placeholder="Processor column name" value="'+esc(r.col)+'" onchange="S.outputFormat['+i+'].col=this.value" style="flex:2;min-width:140px'+(warn?';border-color:var(--ac2)':'')+'"\/>'
+        + '<span style="color:var(--t3);font-family:var(--mo);font-size:11px">&rarr;<\/span>'
+        + '<input type="text" placeholder="Rename in output (optional)" value="'+esc(r.rename)+'" onchange="S.outputFormat['+i+'].rename=this.value" style="flex:2;min-width:120px"\/>'
+        + warnIcon
+        + '<button class="btn btn-xs btn-re" onclick="S.outputFormat.splice('+i+',1);renderOutputFormat()">&#10005;<\/button>'
+        + '<\/div>';
+    }).join('');
 }
 
 function ofDrop(event,toIdx){
