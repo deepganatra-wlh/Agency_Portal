@@ -468,6 +468,71 @@ def get_default_for_col(parent_biz, sub_label):
     return None
 
 
+
+# ══════════════════════════════════════════════════════════════
+# COLUMN TRANSFORMS & OUTPUT FORMAT
+# ══════════════════════════════════════════════════════════════
+
+TRANSFORM_OPS = {
+    'multiply':  lambda v, n: float(v) * n,
+    'divide':    lambda v, n: float(v) / n if n != 0 else float(v),
+    'add':       lambda v, n: float(v) + n,
+    'subtract':  lambda v, n: float(v) - n,
+    'round':     lambda v, n: round(float(v), int(n)),
+}
+
+def apply_col_transforms(df, transforms):
+    """
+    transforms: list of {col, op, value}
+    Applies in order. Non-numeric cells are left as-is.
+    Returns modified df (copy).
+    """
+    if not transforms:
+        return df
+    df = df.copy()
+    for t in transforms:
+        col = t.get('col', '').strip()
+        op  = t.get('op', '').strip().lower()
+        try:
+            num = float(t.get('value', 0))
+        except (TypeError, ValueError):
+            continue
+        if not col or op not in TRANSFORM_OPS or col not in df.columns:
+            continue
+        fn = TRANSFORM_OPS[op]
+        def safe_apply(v):
+            try:
+                result = fn(v, num)
+                # Return int if result is a whole number
+                if isinstance(result, float) and result == int(result):
+                    return int(result)
+                return result
+            except (TypeError, ValueError):
+                return v
+        df[col] = df[col].apply(safe_apply)
+    return df
+
+
+def apply_output_format(df, output_format):
+    """
+    output_format: list of {col, rename} in desired order.
+    Only columns listed are included; rename is optional.
+    If output_format is empty, return df unchanged.
+    """
+    if not output_format:
+        return df
+    cols_in_df = set(df.columns)
+    selected = [f for f in output_format if f.get('col','').strip() in cols_in_df]
+    if not selected:
+        return df
+    col_order = [f['col'].strip() for f in selected]
+    df = df[col_order].copy()
+    rename_map = {f['col'].strip(): f['rename'].strip()
+                  for f in selected if f.get('rename','').strip()}
+    if rename_map:
+        df = df.rename(columns=rename_map)
+    return df
+
 # ══════════════════════════════════════════════════════════════
 # API ROUTES
 # ══════════════════════════════════════════════════════════════
@@ -566,6 +631,17 @@ def process():
             return jsonify({'error':f'No output rows generated. {skipped_rows} source rows skipped (blank/header). Check sheet config.'}),400
 
         df = pd.DataFrame(rows)
+
+        # Apply column transforms (e.g. multiply Span Prct* by 100)
+        col_transforms = d.get('col_transforms', [])
+        if col_transforms:
+            df = apply_col_transforms(df, col_transforms)
+
+        # Apply output format (column selection + ordering + optional rename)
+        output_format = d.get('output_format', [])
+        if output_format:
+            df = apply_output_format(df, output_format)
+
         sid  = d.get('session_id','x')
         fn   = f"{sid}_{secure_filename(d.get('output_name','agency_output'))}.csv"
         op   = os.path.join(OUTPUT_DIR, fn)

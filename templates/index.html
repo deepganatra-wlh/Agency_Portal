@@ -390,7 +390,7 @@ SYSTEM COMMISSION</textarea>
 
 <!-- ── Step 6: Output Settings ── -->
 <div class="panel" id="p-6">
-  <div class="ph"><h2>Output Settings</h2><p>Set static fields that appear on every output row, and name the output file.</p></div>
+  <div class="ph"><h2>Output Settings</h2><p>Set static fields, column transforms, output column order, and file name.</p></div>
   <div class="card">
     <div class="ct">Static Output Fields <span class="bx bx-am">written to every row</span>
       <button class="btn btn-sec btn-sm" onclick="addStaticField()">+ Add</button>
@@ -408,6 +408,32 @@ SYSTEM COMMISSION</textarea>
       Common use: <code>Two Wheeler Category* = ANY</code> · <code>Body Type* = ANY</code> · <code>Fuel Type* = ANY</code> · <code>Bus Type* = ANY</code>
     </div>
   </div>
+  <!-- ── Column Transforms ── -->
+  <div class="card">
+    <div class="ct">Column Transforms <span class="bx bx-gr">apply math to any numeric column</span>
+      <button class="btn btn-sec btn-sm" onclick="addTransform()">+ Add</button>
+    </div>
+    <div id="transform-rows"></div>
+    <div class="hint" style="margin-top:7px">
+      Example: <code>Span Prct* × 100</code> converts <code>0.65 → 65</code>.
+      Operations: <strong>multiply, divide, add, subtract, round</strong>.
+      Non-numeric cells are left unchanged.
+    </div>
+  </div>
+
+  <!-- ── Output Format ── -->
+  <div class="card">
+    <div class="ct">Output Format <span class="bx bx-pu">select columns &amp; set order</span>
+      <span style="font-size:11px;color:var(--t2);margin-left:8px">drag ☰ to reorder</span>
+      <button class="btn btn-sec btn-sm" style="margin-left:auto" onclick="addOutputCol()">+ Add Column</button>
+      <button class="btn btn-sec btn-sm" onclick="autoFillOutputCols()">↺ Auto-fill from Inspection</button>
+    </div>
+    <div class="sb sb-info" style="margin-bottom:10px;font-size:12px">
+      Leave empty to output <strong>all columns</strong> in default order. Add rows here to select specific columns and their sequence. Optionally rename columns with a different output header.
+    </div>
+    <div id="output-format-rows" style="user-select:none"></div>
+  </div>
+
   <div class="card">
     <div class="ct">Output File</div>
     <div class="fg" style="max-width:340px"><label>Output CSV File Name</label><input type="text" id="out-fn" value="agency_grid_output"/></div>
@@ -458,6 +484,8 @@ const S = {
   normRows:[],     // [{from, to}]
   staticFields:[]  // [{col, val}]
   ,colDefaults:[]  // [{col, val}] — fallback for absent/empty output columns
+  ,colTransforms:[]  // [{col, op, value}] — math transforms on numeric cols
+  ,outputFormat:[]   // [{col, rename}] in desired output order
 };
 const files = {};
 
@@ -725,6 +753,76 @@ function renderColDefaults(){
     </div>`).join('');
 }
 
+// ──────────────── Column Transforms ──────────────────────────────────────────────
+const TRANSFORM_OPS = ['multiply','divide','add','subtract','round'];
+function initTransforms(){
+  // Pre-populate with the most common use-case
+  S.colTransforms=[{col:'Span Prct*', op:'multiply', value:'100'}];
+  renderTransforms();
+}
+function addTransform(){S.colTransforms.push({col:'',op:'multiply',value:'100'});renderTransforms();}
+function renderTransforms(){
+  document.getElementById('transform-rows').innerHTML=S.colTransforms.map((r,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <input type="text" placeholder="Column name (exact)" value="${esc(r.col)}"
+        onchange="S.colTransforms[${i}].col=this.value" style="flex:2;min-width:140px"/>
+      <select onchange="S.colTransforms[${i}].op=this.value" style="flex:1;min-width:110px">
+        ${TRANSFORM_OPS.map(op=>`<option value="${op}" ${r.op===op?'selected':''}>${op}</option>`).join('')}
+      </select>
+      <span style="color:var(--t3);font-family:var(--mo)">by</span>
+      <input type="number" step="any" placeholder="value" value="${esc(r.value)}"
+        onchange="S.colTransforms[${i}].value=this.value" style="flex:1;min-width:70px"/>
+      <button class="btn btn-xs btn-re" onclick="S.colTransforms.splice(${i},1);renderTransforms()">✕</button>
+    </div>`).join('');
+}
+
+// ──────────────── Output Format ───────────────────────────────────────────────
+let _dragIdx=null;
+function initOutputFormat(){S.outputFormat=[];renderOutputFormat();}
+
+function autoFillOutputCols(){
+  // Pull column names from the last inspection result
+  const cols = S.inspectData?.col_defs?.map(c=>c.display)||[];
+  const meta  = S.inspectData?.meta_defs?.map(c=>c.display)||[];
+  const all = [...new Set([...meta,...cols])];
+  if(!all.length){alert('Run sheet inspection first (Step 2)');return;}
+  S.outputFormat = all.map(c=>({col:c,rename:''}));
+  renderOutputFormat();
+}
+
+function addOutputCol(){S.outputFormat.push({col:'',rename:''});renderOutputFormat();}
+
+function renderOutputFormat(){
+  const rows = S.outputFormat;
+  document.getElementById('output-format-rows').innerHTML = rows.length===0
+    ? '<div style="color:var(--t3);font-size:12px;padding:6px 0">No columns configured — all columns will be output in default order.</div>'
+    : rows.map((r,i)=>`
+    <div class="of-row" draggable="true"
+      ondragstart="S._dragIdx=${i}"
+      ondragover="event.preventDefault()"
+      ondrop="ofDrop(event,${i})"
+      style="display:flex;gap:8px;align-items:center;margin-bottom:6px;cursor:grab">
+      <span style="color:var(--t3);cursor:grab;font-size:16px;padding:0 4px;flex-shrink:0">☰</span>
+      <span style="color:var(--t3);font-family:var(--mo);font-size:10px;min-width:18px;text-align:right">${i+1}</span>
+      <input type="text" placeholder="Column name (exact)" value="${esc(r.col)}"
+        onchange="S.outputFormat[${i}].col=this.value" style="flex:2;min-width:140px"/>
+      <span style="color:var(--t3);font-family:var(--mo);font-size:11px">→</span>
+      <input type="text" placeholder="Rename (optional)" value="${esc(r.rename)}"
+        onchange="S.outputFormat[${i}].rename=this.value" style="flex:2;min-width:120px"/>
+      <button class="btn btn-xs btn-re" onclick="S.outputFormat.splice(${i},1);renderOutputFormat()">✕</button>
+    </div>`).join('');
+}
+
+function ofDrop(event,toIdx){
+  event.preventDefault();
+  const from = S._dragIdx;
+  if(from===null||from===toIdx)return;
+  const moved=S.outputFormat.splice(from,1)[0];
+  S.outputFormat.splice(toIdx,0,moved);
+  S._dragIdx=null;
+  renderOutputFormat();
+}
+
 // ──────────────── Summary ──────────────────────────────────────────────────────
 function buildSummary(){
   const en=S.colCfg.filter(c=>c.enabled).length;
@@ -803,6 +901,8 @@ async function runProcess(){
     agency_gwp_ul_col:document.getElementById('agency-ul').value,
     output_static_fields:output_static,
             column_defaults:column_defaults,
+            col_transforms:S.colTransforms.filter(r=>r.col&&r.op&&r.value!==''),
+            output_format:S.outputFormat.filter(r=>r.col.trim()),
     rto_norm_map, skip_if_vol_biz:skip_vol_biz,
     span_outgo_col:document.getElementById('out-span-outgo').value,
     span_prct_col:document.getElementById('out-span-prct').value,
@@ -860,6 +960,8 @@ setMode('special');
 initNormRows();
 initStaticFields();
 initColDefaults();
+initTransforms();
+initOutputFormat();
 renderAgentRows();
 renderVgRows();
 </script>
