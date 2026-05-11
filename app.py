@@ -486,6 +486,10 @@ def apply_col_transforms(df, transforms):
     transforms: list of {col, op, value}
     Applies in order. Non-numeric cells are left as-is.
     Returns modified df (copy).
+
+    NOTE: fn and num are passed as default args to avoid Python closure-in-loop bug.
+    Excel stores percentage values as decimals (e.g. 19% -> 0.19), so multiply by 100
+    to get the integer percentage in the output.
     """
     if not transforms:
         return df
@@ -500,15 +504,16 @@ def apply_col_transforms(df, transforms):
         if not col or op not in TRANSFORM_OPS or col not in df.columns:
             continue
         fn = TRANSFORM_OPS[op]
-        def safe_apply(v):
+        # Use default-arg capture to avoid closure-over-loop-variable bug
+        def safe_apply(v, _fn=fn, _num=num):
             try:
-                result = fn(v, num)
-                # Return int if result is a whole number
+                result = _fn(float(v), _num)
+                # Return int if result is a whole number (e.g. 65.0 -> 65)
                 if isinstance(result, float) and result == int(result):
                     return int(result)
                 return result
             except (TypeError, ValueError):
-                return v
+                return v  # leave non-numeric values (IRDA, ANY, empty) unchanged
         df[col] = df[col].apply(safe_apply)
     return df
 

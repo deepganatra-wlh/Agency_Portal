@@ -901,8 +901,6 @@ async function runProcess(){
     agency_gwp_ul_col:document.getElementById('agency-ul').value,
     output_static_fields:output_static,
             column_defaults:column_defaults,
-            col_transforms:S.colTransforms.filter(r=>r.col&&r.op&&r.value!==''),
-            output_format:S.outputFormat.filter(r=>r.col.trim()),
     rto_norm_map, skip_if_vol_biz:skip_vol_biz,
     span_outgo_col:document.getElementById('out-span-outgo').value,
     span_prct_col:document.getElementById('out-span-prct').value,
@@ -925,6 +923,8 @@ async function runProcess(){
         rto_col:document.getElementById('rto-col').value,
         rto_cluster_col:document.getElementById('rto-clu-col').value,
         rto_cat_col:document.getElementById('rto-cat-col').value,
+        col_transforms:S.colTransforms.filter(r=>r.col&&r.op&&r.value!==''),
+        output_format:S.outputFormat.filter(r=>r.col.trim()),
         config
       })});
     const d=await r.json();
