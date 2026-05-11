@@ -428,8 +428,15 @@ SYSTEM COMMISSION</textarea>
       <button class="btn btn-sec btn-sm" style="margin-left:auto" onclick="addOutputCol()">+ Add Column</button>
       <button class="btn btn-sec btn-sm" onclick="autoFillOutputCols()">↺ Auto-fill from Inspection</button>
     </div>
+    <!-- CSV upload strip -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 12px;background:var(--bg2);border-radius:8px;border:1px dashed var(--bd)">
+      <span style="font-size:12px;color:var(--t2);white-space:nowrap">📂 Upload output CSV to load columns:</span>
+      <input type="file" id="out-csv-upload" accept=".csv" style="font-size:12px;flex:1;min-width:0"
+        onchange="loadOutputCsvHeaders(this)"/>
+      <span id="out-csv-status" style="font-size:11px;color:var(--ac3);white-space:nowrap"></span>
+    </div>
     <div class="sb sb-info" style="margin-bottom:10px;font-size:12px">
-      Leave empty to output <strong>all columns</strong> in default order. Add rows here to select specific columns and their sequence. Optionally rename columns with a different output header.
+      Upload a sample output CSV to auto-load its headers, or leave empty to output <strong>all columns</strong> in default order. Drag ☰ to reorder, optionally rename columns.
     </div>
     <div id="output-format-rows" style="user-select:none"></div>
   </div>
@@ -779,6 +786,45 @@ function renderTransforms(){
 // ──────────────── Output Format ───────────────────────────────────────────────
 let _dragIdx=null;
 function initOutputFormat(){S.outputFormat=[];renderOutputFormat();}
+
+function loadOutputCsvHeaders(input){
+  const file = input.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('out-csv-status');
+  statusEl.textContent = 'Reading…';
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const text = e.target.result;
+      // Parse only the first line (header row) — handle quoted headers too
+      const firstLine = text.split(/\r?\n/)[0];
+      // Simple CSV header parser: handles quoted fields with commas inside
+      const headers = [];
+      let cur = '', inQ = false;
+      for(let i=0;i<firstLine.length;i++){
+        const ch = firstLine[i];
+        if(ch==='"'){ inQ=!inQ; }
+        else if(ch===','&&!inQ){ headers.push(cur.trim()); cur=''; }
+        else { cur+=ch; }
+      }
+      if(cur.trim()) headers.push(cur.trim());
+
+      if(!headers.length){ statusEl.style.color='var(--re)'; statusEl.textContent='No headers found'; return; }
+
+      S.outputFormat = headers.map(h=>({col:h, rename:''}));
+      renderOutputFormat();
+      statusEl.style.color='var(--ac3)';
+      statusEl.textContent = `✓ ${headers.length} columns loaded`;
+      // Reset input so same file can be re-uploaded if needed
+      input.value='';
+    } catch(err){
+      statusEl.style.color='var(--re)';
+      statusEl.textContent='Error: '+err.message;
+    }
+  };
+  reader.onerror = ()=>{ statusEl.style.color='var(--re)'; statusEl.textContent='Failed to read file'; };
+  reader.readAsText(file);
+}
 
 function autoFillOutputCols(){
   // Pull column names from the last inspection result
