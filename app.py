@@ -147,8 +147,14 @@ def build_rto_index(path, sheet, header_row,
         v = ws.cell(header_row, c).value
         if v: headers[str(v).strip().upper()] = c
     rtoc = headers.get(rto_col.upper())
-    cluc = headers.get(cluster_col.upper())
     catc = headers.get(cat_col.upper())
+    # Auto-detect cluster column: try exact match first, then any "UW CLUSTER" variant
+    cluc = headers.get(cluster_col.upper())
+    if not cluc:
+        for hdr, idx in headers.items():
+            if hdr.startswith('UW CLUSTER'):
+                cluc = idx
+                break
     index = {}
     all_codes = []
     for r in range(header_row+1, ws.max_row+1):
@@ -198,6 +204,9 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
     norm_outgo  = config.get('normal_outgo_value', 'GWP')
     agent_map   = config.get('agent_group_map', {})
     vol_gwp_map = config.get('vol_gwp_map', {})
+    # column_defaults: dict of {output_col_name: default_value} applied to every output row
+    # when the field would otherwise be absent or empty. Set via UI "Column Defaults" section.
+    col_defaults = config.get('column_defaults', {})
     std_ll      = config.get('std_gwp_ll_col',    'Total Gwp Ll*')
     std_ul      = config.get('std_gwp_ul_col',    'Total Gwp Ul*')
     prime_ll    = config.get('prime_gwp_ll_col',  'Total Gwp Ll*')
@@ -347,6 +356,11 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
                 rto = 'ANY'
             out[rto_code_c] = rto
 
+            # Apply column_defaults: fill any key not already set (or set to '')
+            for def_col, def_val in col_defaults.items():
+                if def_col not in out or out[def_col] == '':
+                    out[def_col] = def_val
+
             output_rows.append(out)
 
     wb.close()
@@ -399,6 +413,8 @@ DEFAULT_COL_CONFIG_KEYED = {
     # CE
     ('CE','CE-CONSTRUCTION EQ'):  {'biz_mix_output':'CE-CONSTRUCTION EQ','rto_category':'MISD','extra_fields':{}},
     ('CE','MISD GARBAGE'):        {'biz_mix_output':'MISD GARBAGE',      'rto_category':'MISD Garbage','extra_fields':{}},
+    ('CE','MISC-D GARBAGE'):      {'biz_mix_output':'MISD GARBAGE',      'rto_category':'MISD Garbage','extra_fields':{}},
+    ('CE','MISC-D OTHERS'):       {'biz_mix_output':'CE-CONSTRUCTION EQ','rto_category':'MISD',         'extra_fields':{}},
     ('CE','HARVESTER NEW'):       {'biz_mix_output':'HARVESTER NEW',     'rto_category':'MISD','extra_fields':{'Type Of Business*':'New'}},
     ('CE','HARVESTER OLD'):       {'biz_mix_output':'HARVESTER OLD',     'rto_category':'MISD','extra_fields':{'Type Of Business*':'Renewal, Roll Over'}},
     # 2W

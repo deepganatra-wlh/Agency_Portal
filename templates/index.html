@@ -186,7 +186,7 @@ tr:hover td{background:rgba(255,255,255,.02);}
       <input type="file" id="fi-rto" accept=".xlsx,.xls" onchange="handleFile('rto')"/>
       <div class="ui">🗺️</div>
       <h3>RTO vs Cluster Excel</h3>
-      <p>Must contain: RTO CODE · PRODUCT CATEGORY · UW CLUSTER (25-26)</p>
+      <p>Must contain: RTO CODE · PRODUCT CATEGORY · UW CLUSTER (26-27)</p>
       <div id="fd-rto"></div>
     </div>
   </div>
@@ -345,13 +345,13 @@ SYSTEM COMMISSION</textarea>
   <div class="card">
     <div class="ct">RTO File Structure</div>
     <div class="fr3">
-      <div class="fg"><label>RTO Sheet Name</label><input type="text" id="rto-sheet" value="RTO Vs Cluster"/></div>
+      <div class="fg"><label>RTO Sheet Name</label><input type="text" id="rto-sheet" value="RTO Vs Cluster (New)"/></div>
       <div class="fg"><label>Header Row</label><input type="number" id="rto-hr" value="2" min="1"/></div>
       <div></div>
     </div>
     <div class="fr3">
       <div class="fg"><label>RTO Code Column Header</label><input type="text" id="rto-col" value="RTO CODE"/></div>
-      <div class="fg"><label>Cluster Column Header</label><input type="text" id="rto-clu-col" value="UW CLUSTER (25-26)"/></div>
+      <div class="fg"><label>Cluster Column Header</label><input type="text" id="rto-clu-col" value="UW CLUSTER (26-27)"/></div>
       <div class="fg"><label>Category Column Header</label><input type="text" id="rto-cat-col" value="PRODUCT CATEGORY"/></div>
     </div>
   </div>
@@ -394,6 +394,16 @@ SYSTEM COMMISSION</textarea>
     </div>
     <div id="static-rows"></div>
     <div class="hint" style="margin-top:7px">Example: <code>Version Id* = my_grid_v1</code> · <code>Oem Type* = AGENCY</code></div>
+  </div>
+  <div class="card">
+    <div class="ct">Column Defaults <span class="bx bx-pu">fallback when column is absent/empty</span>
+      <button class="btn btn-sec btn-sm" onclick="addColDefault()">+ Add</button>
+    </div>
+    <div id="col-default-rows"></div>
+    <div class="hint" style="margin-top:7px">
+      Set a fallback value for any output column when it would otherwise be blank.<br>
+      Common use: <code>Two Wheeler Category* = ANY</code> · <code>Body Type* = ANY</code> · <code>Fuel Type* = ANY</code> · <code>Bus Type* = ANY</code>
+    </div>
   </div>
   <div class="card">
     <div class="ct">Output File</div>
@@ -444,6 +454,7 @@ const S = {
   agentRows:[],    // [{imd_type, code}]
   normRows:[],     // [{from, to}]
   staticFields:[]  // [{col, val}]
+  ,colDefaults:[]  // [{col, val}] — fallback for absent/empty output columns
 };
 const files = {};
 
@@ -688,6 +699,29 @@ function renderStaticFields(){
     </div>`).join('');
 }
 
+// ──────────────── Column Defaults ─────────────────────────────────────────────
+function initColDefaults(){
+  // Pre-populate common "ANY" fallback columns
+  S.colDefaults=[
+    {col:'Two Wheeler Category*', val:'ANY'},
+    {col:'Body Type*',            val:'ANY'},
+    {col:'Fuel Type*',            val:'ANY'},
+    {col:'Bus Type*',             val:'ANY'},
+    {col:'Type Of Business*',     val:'ANY'},
+  ];
+  renderColDefaults();
+}
+function addColDefault(){S.colDefaults.push({col:'',val:''});renderColDefaults();}
+function renderColDefaults(){
+  document.getElementById('col-default-rows').innerHTML=S.colDefaults.map((r,i)=>`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:7px">
+      <input type="text" placeholder="Output Column Name" value="${esc(r.col)}" onchange="S.colDefaults[${i}].col=this.value" style="flex:1"/>
+      <span style="color:var(--t3);font-family:var(--mo)">→</span>
+      <input type="text" placeholder="Default value if absent/empty" value="${esc(r.val)}" onchange="S.colDefaults[${i}].val=this.value" style="flex:1"/>
+      <button class="btn btn-xs btn-re" onclick="S.colDefaults.splice(${i},1);renderColDefaults()">✕</button>
+    </div>`).join('');
+}
+
 // ──────────────── Summary ──────────────────────────────────────────────────────
 function buildSummary(){
   const en=S.colCfg.filter(c=>c.enabled).length;
@@ -737,6 +771,8 @@ async function runProcess(){
 
   const output_static={};
   S.staticFields.filter(r=>r.col).forEach(r=>{output_static[r.col]=r.val;});
+  const column_defaults={};
+  S.colDefaults.filter(r=>r.col).forEach(r=>{column_defaults[r.col]=r.val;});
 
   const col_defs=S.colCfg.filter(c=>c.enabled&&c.col_idx).map(c=>({
     col_idx:c.col_idx, biz_mix_output:c.biz_mix_output,
@@ -763,6 +799,7 @@ async function runProcess(){
     agency_gwp_ll_col:document.getElementById('agency-ll').value,
     agency_gwp_ul_col:document.getElementById('agency-ul').value,
     output_static_fields:output_static,
+            column_defaults:column_defaults,
     rto_norm_map, skip_if_vol_biz:skip_vol_biz,
     span_outgo_col:document.getElementById('out-span-outgo').value,
     span_prct_col:document.getElementById('out-span-prct').value,
@@ -819,6 +856,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 setMode('special');
 initNormRows();
 initStaticFields();
+initColDefaults();
 renderAgentRows();
 renderVgRows();
 </script>
