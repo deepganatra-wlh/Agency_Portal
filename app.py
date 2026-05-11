@@ -542,15 +542,23 @@ def process():
         config['filepath'] = d['filepath']
 
         rto_index = None; all_rto = []
-        if d.get('rto_filepath') and os.path.exists(d['rto_filepath']):
-            rto_index, all_rto = build_rto_index(
-                d['rto_filepath'],
-                d.get('rto_sheet','RTO Vs Cluster'),
-                d.get('rto_header_row',2),
-                d.get('rto_col','RTO CODE'),
-                d.get('rto_cluster_col','UW CLUSTER (25-26)'),
-                d.get('rto_cat_col','PRODUCT CATEGORY')
-            )
+        # Use dedicated RTO file if uploaded; otherwise fall back to the main grid file
+        # (RTO sheet is often inside the same workbook as the grid)
+        rto_src = d.get('rto_filepath')
+        if not rto_src or not os.path.exists(str(rto_src)):
+            rto_src = d.get('filepath')   # same workbook fallback
+        if rto_src and os.path.exists(str(rto_src)):
+            try:
+                rto_index, all_rto = build_rto_index(
+                    rto_src,
+                    d.get('rto_sheet', 'RTO Vs Cluster (New)'),
+                    d.get('rto_header_row', 2),
+                    d.get('rto_col', 'RTO CODE'),
+                    d.get('rto_cluster_col', 'UW CLUSTER (26-27)'),
+                    d.get('rto_cat_col', 'PRODUCT CATEGORY')
+                )
+            except Exception as rto_err:
+                print(f'[WARN] RTO index build failed: {rto_err}')
 
         rows, skipped_rows, skipped_cells = process_matrix(config, rto_index, all_rto)
 

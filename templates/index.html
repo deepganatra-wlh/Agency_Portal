@@ -181,11 +181,14 @@ tr:hover td{background:rgba(255,255,255,.02);}
     </div>
   </div>
   <div class="card">
-    <div class="ct">RTO vs Cluster File <span class="bx bx-gr">Optional — enables RTO code lookup</span></div>
+    <div class="ct">RTO vs Cluster File <span class="bx bx-gr">Optional — only needed if RTO sheet is in a separate file</span></div>
+    <div class="sb sb-info" style="margin-bottom:10px">
+      💡 <strong>If your RTO sheet is inside the same workbook</strong> (e.g. "RTO Vs Cluster (New)"), skip this upload entirely — the portal will find it automatically. Only upload here if your RTO data is in a <em>separate</em> Excel file.
+    </div>
     <div class="uz" id="uz-rto" ondragover="doDrag(event,'rto')" ondragleave="doDragLeave('rto')" ondrop="doDrop(event,'rto')">
       <input type="file" id="fi-rto" accept=".xlsx,.xls" onchange="handleFile('rto')"/>
       <div class="ui">🗺️</div>
-      <h3>RTO vs Cluster Excel</h3>
+      <h3>RTO vs Cluster Excel <span style="font-weight:400;color:var(--t2)">(separate file only)</span></h3>
       <p>Must contain: RTO CODE · PRODUCT CATEGORY · UW CLUSTER (26-27)</p>
       <div id="fd-rto"></div>
     </div>
