@@ -150,6 +150,8 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button class="ni" id="ni-5" onclick="goStep(5)"><span class="nb" id="nb-5">5</span>RTO Config</button>
     <button class="ni" id="ni-6" onclick="goStep(6)"><span class="nb" id="nb-6">6</span>Output Settings</button>
     <button class="ni" id="ni-7" onclick="goStep(7)"><span class="nb" id="nb-7">7</span>Process &amp; Export</button>
+    <div class="nl" style="margin-top:10px">Tools</div>
+    <button class="ni" id="ni-8" onclick="goStep(8)"><span class="nb" id="nb-8">⇌</span>CSV Merger</button>
   </nav>
   <div class="sf">
     <div style="font-size:9.5px;color:var(--t3);font-family:var(--mo);margin-bottom:7px">MODE LOGIC</div>
@@ -477,6 +479,91 @@ SYSTEM COMMISSION</textarea>
   <div class="ar" style="margin-top:10px"><button class="btn btn-sec" onclick="goStep(6)">← Back</button></div>
 </div>
 
+<!-- ── Step 8: CSV Merger ── -->
+<div class="panel" id="p-8">
+  <div class="ph">
+    <h2>CSV Merger</h2>
+    <p>Add files one by one — each gets its own GWP mapping. All files merge into a single output.</p>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="card">
+    <div class="ct">Add CSV Files <span class="bx bx-am">each file gets its own GWP mapping below</span></div>
+    <div class="uz" id="uz-merge"
+         ondragover="event.preventDefault();document.getElementById('uz-merge').classList.add('drag')"
+         ondragleave="document.getElementById('uz-merge').classList.remove('drag')"
+         ondrop="event.preventDefault();document.getElementById('uz-merge').classList.remove('drag');handleMergeFilesFromDrop(event.dataTransfer.files)">
+      <input type="file" id="fi-merge" accept=".csv" multiple onchange="handleMergeFiles(this.files)"/>
+      <div class="ui">📂</div>
+      <h3>Drop CSV files here or click to browse</h3>
+      <p>Multiple files OK — a row with GWP selector appears for each one</p>
+    </div>
+  </div>
+
+  <!-- Per-file GWP mapping table -->
+  <div class="card" id="mg-file-card" style="display:none">
+    <div class="ct">Per-File GWP Mapping
+      <span class="bx bx-pu" id="mg-file-count-badge"></span>
+    </div>
+    <div class="sb sb-info" style="margin-bottom:12px;font-size:11.5px">
+      💡 <code>Total Gwp Ll*</code> and <code>Total Gwp Ul*</code> from each source file will be written into the selected target column pair. All other GWP columns get sentinel defaults.
+    </div>
+    <table style="width:100%;border-collapse:collapse" id="mg-file-table">
+      <thead>
+        <tr>
+          <th style="background:var(--s3);padding:7px 10px;text-align:left;font-family:var(--mo);font-size:9.5px;color:var(--t2);border-bottom:1px solid var(--b1);text-transform:uppercase">File</th>
+          <th style="background:var(--s3);padding:7px 10px;text-align:left;font-family:var(--mo);font-size:9.5px;color:var(--t2);border-bottom:1px solid var(--b1);text-transform:uppercase;min-width:260px">GWP Target Column Pair</th>
+          <th style="background:var(--s3);padding:7px 10px;text-align:left;font-family:var(--mo);font-size:9.5px;color:var(--t2);border-bottom:1px solid var(--b1);text-transform:uppercase">Maps to</th>
+          <th style="background:var(--s3);padding:7px 10px;border-bottom:1px solid var(--b1);width:36px"></th>
+        </tr>
+      </thead>
+      <tbody id="mg-file-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Output config -->
+  <div class="card">
+    <div class="ct">Output Configuration</div>
+    <div class="fr">
+      <div class="fg">
+        <label>Append to existing output file <span style="font-weight:400;color:var(--t3)">(optional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="mg-append-sel" style="flex:1">
+            <option value="">— Create new file (don't append) —</option>
+          </select>
+          <button class="btn btn-sec btn-sm" onclick="loadOutputsList()">↺</button>
+        </div>
+        <div class="hint">Pick an existing output to append all new rows to it.</div>
+      </div>
+      <div class="fg">
+        <label>Output file name (without .csv)</label>
+        <input type="text" id="mg-out-name" value="common_primebroking_merged" placeholder="merged_output"/>
+      </div>
+    </div>
+  </div>
+
+  <div class="ar" style="margin-bottom:16px">
+    <button class="btn btn-am btn-lg" id="btn-merge" onclick="runMerge()">⇌ Run Merger</button>
+  </div>
+  <div id="mg-status"></div>
+
+  <!-- Result -->
+  <div id="mg-result-section" style="display:none" class="fade">
+    <div class="stats-row" id="mg-result-stats"></div>
+    <div class="card">
+      <div class="ct">Per-File Summary</div>
+      <div id="mg-file-summary"></div>
+    </div>
+    <div class="card">
+      <div class="ct">Output Preview <span class="bx bx-gr">first 5 rows · first 8 cols</span></div>
+      <div class="tw" id="mg-result-preview"></div>
+    </div>
+    <div class="ar">
+      <button class="btn btn-gr btn-lg" onclick="dlMergeResult()">⬇ Download Merged CSV</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -508,9 +595,14 @@ function setMode(m) {
 
 // ──────────────── Navigation ───────────────────────────────────────────────────
 function goStep(n){
-  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',i+1===n));
-  document.querySelectorAll('.ni').forEach((b,i)=>b.classList.toggle('active',i+1===n));
+  for(let i=1;i<=8;i++){
+    const p=document.getElementById(`p-${i}`);
+    const b=document.getElementById(`ni-${i}`);
+    if(p) p.classList.toggle('active',i===n);
+    if(b) b.classList.toggle('active',i===n);
+  }
   if(n===7) buildSummary();
+  if(n===8) loadOutputsList();
   window.scrollTo(0,0);
 }
 function markDone(n){document.getElementById(`nb-${n}`)?.closest('.ni').classList.add('done');}
@@ -1055,6 +1147,167 @@ initTransforms();
 initOutputFormat();
 renderAgentRows();
 renderVgRows();
+
+// ──────────────── CSV Merger ────────────────────────────────────────────────
+
+const GWP_OPTIONS = {
+  'total_gwp':               {label:'Total GWP Ll* / Ul*',               ll:'total_gwp_ll',               ul:'total_gwp_ul'},
+  'totalgwp_keybrok_agency': {label:'Totalgwp Keybrok Agency Ll* / Ul*', ll:'totalgwp_keybrok_agency_ll', ul:'totalgwp_keybrok_agency_ul'},
+  'totalgwp_pvt_car':        {label:'Totalgwp Pvt Car Ll* / Ul*',        ll:'totalgwp_pvt_car_ll',        ul:'totalgwp_pvt_car_ul'},
+  'totalgwp_pvtcar1plus1':   {label:'Totalgwp Pvtcar1plus1 Ll* / Ul*',  ll:'totalgwp_pvtcar1plus1_ll',   ul:'totalgwp_pvtcar1plus1_ul'},
+  'totalgwp_satp':           {label:'Totalgwp Satp Ll* / Ul*',           ll:'totalgwp_satp_ll',           ul:'totalgwp_satp_ul'},
+  'totalgwp_tractor':        {label:'Totalgwp Tractor Ll* / Ul*',        ll:'totalgwp_tractor_ll',        ul:'totalgwp_tractor_ul'},
+};
+
+// mergeFiles: [{file: File, gwp_target: string}]
+let mergeFiles = [];
+
+function gwpSelectOptions(selected){
+  return Object.entries(GWP_OPTIONS).map(([k,v])=>
+    `<option value="${k}" ${selected===k?'selected':''}>${v.label}</option>`
+  ).join('');
+}
+
+function handleMergeFiles(fileList){
+  for(const f of fileList){
+    if(f && !mergeFiles.find(x=>x.file.name===f.name)){
+      // Auto-guess GWP target from filename
+      const name = f.name.toLowerCase();
+      let gwp = 'total_gwp';
+      if(name.includes('pvt_car') || name.includes('pvtcar') || name.includes('pvt-car')){
+        // Check for 1+1 variant first
+        if(name.includes('1plus1') || name.includes('1+1') || name.includes('1_1'))
+          gwp = 'totalgwp_pvtcar1plus1';
+        else
+          gwp = 'totalgwp_pvt_car';
+      } else if(name.includes('keybrok') || name.includes('key_brok') || name.includes('agency') || name.includes('agent')){
+        gwp = 'totalgwp_keybrok_agency';
+      } else if(name.includes('satp')){
+        gwp = 'totalgwp_satp';
+      } else if(name.includes('tractor')){
+        gwp = 'totalgwp_tractor';
+      }
+      mergeFiles.push({file: f, gwp_target: gwp});
+    }
+  }
+  renderMergeFileTable();
+}
+function handleMergeFilesFromDrop(fileList){ handleMergeFiles(fileList); }
+
+function renderMergeFileTable(){
+  const card = document.getElementById('mg-file-card');
+  const tbody = document.getElementById('mg-file-tbody');
+  const badge = document.getElementById('mg-file-count-badge');
+
+  if(!mergeFiles.length){
+    card.style.display = 'none';
+    document.getElementById('uz-merge').classList.remove('has-file');
+    return;
+  }
+
+  card.style.display = 'block';
+  document.getElementById('uz-merge').classList.add('has-file');
+  badge.textContent = mergeFiles.length + ' file' + (mergeFiles.length>1?'s':'');
+
+  tbody.innerHTML = mergeFiles.map((entry, i) => {
+    const {ll, ul} = GWP_OPTIONS[entry.gwp_target] || GWP_OPTIONS['total_gwp'];
+    return `<tr>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--b1)">
+        <span style="font-family:var(--mo);font-size:11px;color:var(--ac3)">${esc(entry.file.name)}</span>
+        <span style="color:var(--t3);font-size:10px;margin-left:6px">${(entry.file.size/1024).toFixed(1)} KB</span>
+      </td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--b1)">
+        <select style="width:100%;background:var(--bg);border:1px solid var(--b2);border-radius:5px;padding:5px 8px;color:var(--tx);font-size:12px"
+          onchange="mergeFiles[${i}].gwp_target=this.value;renderMergeFileTable()">
+          ${gwpSelectOptions(entry.gwp_target)}
+        </select>
+      </td>
+      <td style="padding:8px 10px;border-bottom:1px solid var(--b1);font-family:var(--mo);font-size:10px;color:var(--t2);line-height:1.8">
+        <span style="color:var(--t3)">LL→</span> <span style="color:var(--ac)">${esc(ll)}</span><br/>
+        <span style="color:var(--t3)">UL→</span> <span style="color:var(--ac)">${esc(ul)}</span>
+      </td>
+      <td style="padding:6px 10px;border-bottom:1px solid var(--b1);text-align:center">
+        <button class="btn btn-xs btn-re" onclick="mergeFiles.splice(${i},1);renderMergeFileTable()">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadOutputsList(){
+  try{
+    const r = await fetch('/api/list_outputs');
+    const d = await r.json();
+    const sel = document.getElementById('mg-append-sel');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Create new file (don\'t append) —</option>' +
+      (d.files||[]).map(f=>`<option value="${esc(f)}" ${f===cur?'selected':''}>${esc(f)}</option>`).join('');
+  }catch(e){ console.warn('Could not load outputs list', e); }
+}
+
+async function runMerge(){
+  const statusEl = document.getElementById('mg-status');
+  const btn = document.getElementById('btn-merge');
+
+  if(!mergeFiles.length){
+    statusEl.innerHTML = '<div class="sb sb-err">❌ Please add at least one CSV file.</div>'; return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="sp"></div> Processing…';
+  statusEl.innerHTML = `<div class="sb sb-info"><div class="sp"></div> Mapping and merging ${mergeFiles.length} file(s)…</div>`;
+  document.getElementById('mg-result-section').style.display = 'none';
+
+  const fd = new FormData();
+  mergeFiles.forEach((entry, i) => {
+    fd.append('csv_files[]', entry.file);
+    fd.append('gwp_targets[]', entry.gwp_target);
+  });
+  fd.append('output_name', document.getElementById('mg-out-name').value || 'merged_output');
+  fd.append('append_filename', document.getElementById('mg-append-sel').value || '');
+
+  try{
+    const r = await fetch('/api/merge_csv', {method:'POST', body:fd});
+    const d = await r.json();
+    if(d.error) throw new Error(d.trace || d.error);
+
+    S._mergeResult = d;
+    statusEl.innerHTML = `<div class="sb sb-ok">✓ Merged successfully — ${d.total_rows.toLocaleString()} total rows in output.</div>`;
+
+    document.getElementById('mg-result-stats').innerHTML = `
+      <div class="stat"><div class="val" style="color:var(--ac)">${d.total_rows.toLocaleString()}</div><div class="lbl">Total Rows</div></div>
+      <div class="stat"><div class="val" style="color:var(--ac3)">${(d.files||[]).length}</div><div class="lbl">Files Merged</div></div>
+      <div class="stat"><div class="val" style="color:var(--ac4)">${d.columns?.length||0}</div><div class="lbl">Columns</div></div>
+      <div class="stat"><div class="val" style="color:var(--t2);font-size:13px">${esc(d.output_filename)}</div><div class="lbl">Output File</div></div>`;
+
+    document.getElementById('mg-file-summary').innerHTML =
+      (d.files||[]).map(f=>`
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+          <span class="chip ${f.error?'chip-re':'chip-gr'}">${f.error?'ERR':'OK'}</span>
+          <span style="font-family:var(--mo);font-size:11px;flex:1;min-width:180px">${esc(f.filename)}</span>
+          <span class="chip chip-am" style="font-size:9px">${esc(GWP_OPTIONS[f.gwp_target]?.label||f.gwp_target)}</span>
+          <span style="color:var(--t2);font-size:11px">${f.error ? esc(f.error) : f.rows.toLocaleString()+' rows'}</span>
+        </div>`).join('');
+
+    if(d.preview?.length){
+      const cols = (d.columns||Object.keys(d.preview[0])).slice(0,8);
+      document.getElementById('mg-result-preview').innerHTML = `<table>
+        <thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}${d.columns?.length>8?`<th style="color:var(--t3)">+${d.columns.length-8} more</th>`:''}</tr></thead>
+        <tbody>${d.preview.map(row=>`<tr>${cols.map(c=>`<td title="${esc(row[c]||'')}">${esc(row[c]||'')}</td>`).join('')}${d.columns?.length>8?'<td>…</td>':''}</tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    document.getElementById('mg-result-section').style.display = 'block';
+  }catch(e){
+    statusEl.innerHTML = `<div class="sb sb-err">❌ ${esc(e.message)}</div>`;
+  }finally{
+    btn.disabled = false;
+    btn.innerHTML = '⇌ Run Merger';
+  }
+}
+
+function dlMergeResult(){
+  if(S._mergeResult) window.location.href = `/api/download/${S._mergeResult.output_filename}`;
+}
 </script>
 </body>
 </html>

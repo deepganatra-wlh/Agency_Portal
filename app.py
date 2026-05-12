@@ -671,5 +671,212 @@ def download(filename):
     return send_file(p, as_attachment=True, download_name=filename)
 
 
+# ══════════════════════════════════════════════════════════════
+# CSV MERGER  (merger.py logic inline — no separate file needed)
+# ══════════════════════════════════════════════════════════════
+
+# GWP target column pairs available for mapping
+GWP_TARGET_OPTIONS = {
+    'total_gwp':              ('total_gwp_ll',              'total_gwp_ul'),
+    'totalgwp_keybrok_agency':('totalgwp_keybrok_agency_ll','totalgwp_keybrok_agency_ul'),
+    'totalgwp_pvt_car':       ('totalgwp_pvt_car_ll',       'totalgwp_pvt_car_ul'),
+    'totalgwp_pvtcar1plus1':  ('totalgwp_pvtcar1plus1_ll',  'totalgwp_pvtcar1plus1_ul'),
+    'totalgwp_satp':          ('totalgwp_satp_ll',          'totalgwp_satp_ul'),
+    'totalgwp_tractor':       ('totalgwp_tractor_ll',       'totalgwp_tractor_ul'),
+}
+
+# Base mapper.json column mappings (all target columns, minus the 6 dynamic GWP pairs)
+BASE_COLUMN_MAPPINGS = {
+    "version_id":             {"source_column": "Version Id*",             "default_value": ""},
+    "parent_agent_code":      {"source_column": "Parent Agent Code*",      "default_value": "ANY"},
+    "agent_group_code":       {"source_column": "Agent Group Code*",       "default_value": "ANY"},
+    "biz_mix":                {"source_column": "Biz Mix*",                "default_value": "ANY"},
+    "two_wheeler_category":   {"source_column": "Two Wheeler Category*",   "default_value": "ANY"},
+    "type_of_business":       {"source_column": "Type Of Business*",       "default_value": "ANY"},
+    "cpan_prct":              {"source_column": "Cpan Prct*",              "default_value": "0"},
+    "rto_cluster":            {"source_column": "Rto Cluster*",            "default_value": "ANY"},
+    "rto_code":               {"source_column": "Rto Code*",               "default_value": "ANY"},
+    "gross_vehicle_weight_ll":{"source_column": "Gross Vehicle Weight Ll*","default_value": "-999999999"},
+    "gross_vehicle_weight_ul":{"source_column": "Gross Vehicle Weight Ul*","default_value": "999999999"},
+    "cubic_capacity_ll":      {"source_column": "Cubic Capacity Ll*",      "default_value": "0"},
+    "cubic_capacity_ul":      {"source_column": "Cubic Capacity Ul*",      "default_value": "999999999"},
+    "cpan_outgo":             {"source_column": "Cpan Outgo*",             "default_value": "0"},
+    "body_type":              {"source_column": "Body Type*",              "default_value": "ANY"},
+    "fuel_type":              {"source_column": "Fuel Type*",              "default_value": "ANY",
+                               "transformation": "fuel_type_transform"},
+    "ncb_ll":                 {"source_column": "Ncb Ll*",                 "default_value": "-999999999"},
+    "ncb_ul":                 {"source_column": "Ncb Ul*",                 "default_value": "999999999"},
+    "vehicle_age_ll":         {"source_column": "Vehicle Age Ll*",         "default_value": "0"},
+    "vehicle_age_ul":         {"source_column": "Vehicle Age Ul*",         "default_value": "999999999"},
+    "bus_type":               {"source_column": "Bus Type*",               "default_value": "ANY"},
+}
+
+# GWP source columns (always the same in the source CSV)
+GWP_SOURCE_LL = "Total Gwp Ll*"
+GWP_SOURCE_UL = "Total Gwp Ul*"
+
+FUEL_TYPE_TRANSFORM = {"Petrol":"Petrol","Diesel":"Diesel","CNG":"CNG","Electric":"Electric","LPG":"LPG"}
+
+# All possible GWP target columns (static defaults — not mapped from source)
+ALL_GWP_TARGETS = [
+    "total_gwp_ll","total_gwp_ul",
+    "totalgwp_keybrok_agency_ll","totalgwp_keybrok_agency_ul",
+    "totalgwp_pvt_car_ll","totalgwp_pvt_car_ul",
+    "totalgwp_pvtcar1plus1_ll","totalgwp_pvtcar1plus1_ul",
+    "totalgwp_satp_ll","totalgwp_satp_ul",
+    "totalgwp_tractor_ll","totalgwp_tractor_ul",
+]
+
+GWP_DEFAULTS = {
+    ll: "-999999999" for ll in ALL_GWP_TARGETS if ll.endswith('_ll')
+}
+GWP_DEFAULTS.update({
+    ul: "999999999" for ul in ALL_GWP_TARGETS if ul.endswith('_ul')
+})
+
+
+def _apply_fuel_transform(value):
+    if not value or (isinstance(value, float) and pd.isna(value)):
+        return value
+    return FUEL_TYPE_TRANSFORM.get(str(value).strip(), value)
+
+
+def _map_csv_row(row, gwp_ll_target, gwp_ul_target):
+    """Map one source CSV row to the target schema."""
+    out = {}
+
+    # Base columns
+    for tgt_col, mapping in BASE_COLUMN_MAPPINGS.items():
+        src = mapping.get("source_column")
+        default = mapping.get("default_value", "")
+        transform = mapping.get("transformation")
+
+        if src and src in row.index:
+            val = row[src]
+            val = default if (pd.isna(val) or str(val).strip() == '') else val
+        else:
+            val = default
+
+        if transform == "fuel_type_transform":
+            val = _apply_fuel_transform(val)
+
+        out[tgt_col] = val
+
+    # All GWP columns default to their sentinel values
+    for col, default in GWP_DEFAULTS.items():
+        out[col] = default
+
+    # Then write the selected GWP target pair from source
+    def _gwp_val(src_col, default):
+        if src_col in row.index:
+            v = row[src_col]
+            return default if (pd.isna(v) or str(v).strip() == '') else v
+        return default
+
+    out[gwp_ll_target] = _gwp_val(GWP_SOURCE_LL, "-999999999")
+    out[gwp_ul_target] = _gwp_val(GWP_SOURCE_UL, "999999999")
+
+    return out
+
+
+@app.route('/api/merge_csv', methods=['POST'])
+def merge_csv():
+    """
+    Accepts:
+      - csv_files[]     : one or more CSV files
+      - gwp_targets[]   : one gwp_target key per file (parallel to csv_files[])
+      - output_name     : base filename for the output
+      - append_filename : (optional) existing output file in outputs/ to append to
+    """
+    try:
+        files = request.files.getlist('csv_files[]')
+        gwp_targets = request.form.getlist('gwp_targets[]')
+
+        if not files or all(f.filename == '' for f in files):
+            return jsonify({'error': 'No CSV files uploaded'}), 400
+
+        output_name = secure_filename(request.form.get('output_name', 'merged_output') or 'merged_output')
+        append_filename = request.form.get('append_filename', '').strip()
+
+        # Validate all targets
+        for gt in gwp_targets:
+            if gt and gt not in GWP_TARGET_OPTIONS:
+                return jsonify({'error': f'Unknown gwp_target: {gt}'}), 400
+
+        all_dfs = []
+
+        # Load existing output to append to
+        if append_filename:
+            existing_path = os.path.join(OUTPUT_DIR, secure_filename(append_filename))
+            if os.path.exists(existing_path):
+                try:
+                    existing_df = pd.read_csv(existing_path)
+                    existing_df.columns = existing_df.columns.str.strip()
+                    all_dfs.append(existing_df)
+                except Exception as ex:
+                    return jsonify({'error': f'Could not read existing file: {ex}'}), 400
+
+        file_summaries = []
+        for idx, f in enumerate(files):
+            if not f.filename:
+                continue
+
+            # Per-file GWP target — fall back to 'total_gwp' if not supplied
+            gwp_target = gwp_targets[idx] if idx < len(gwp_targets) else 'total_gwp'
+            if not gwp_target or gwp_target not in GWP_TARGET_OPTIONS:
+                gwp_target = 'total_gwp'
+            gwp_ll_col, gwp_ul_col = GWP_TARGET_OPTIONS[gwp_target]
+
+            sid = str(uuid.uuid4())[:8]
+            fn = secure_filename(f.filename)
+            tmp_path = os.path.join(UPLOAD_DIR, f"{sid}_{fn}")
+            f.save(tmp_path)
+
+            try:
+                df = pd.read_csv(tmp_path)
+                df.columns = df.columns.str.strip()
+                mapped_rows = [_map_csv_row(row, gwp_ll_col, gwp_ul_col) for _, row in df.iterrows()]
+                mapped_df = pd.DataFrame(mapped_rows)
+                all_dfs.append(mapped_df)
+                file_summaries.append({'filename': fn, 'rows': len(mapped_df), 'gwp_target': gwp_target})
+            except Exception as ex:
+                file_summaries.append({'filename': fn, 'rows': 0, 'gwp_target': gwp_target, 'error': str(ex)})
+            finally:
+                try: os.remove(tmp_path)
+                except: pass
+
+        if not all_dfs:
+            return jsonify({'error': 'No data to merge'}), 400
+
+        merged = pd.concat(all_dfs, ignore_index=True)
+
+        out_fn = f"{output_name}.csv"
+        out_path = os.path.join(OUTPUT_DIR, out_fn)
+        merged.to_csv(out_path, index=False)
+
+        return jsonify({
+            'success': True,
+            'output_filename': out_fn,
+            'total_rows': len(merged),
+            'files': file_summaries,
+            'preview': merged.head(5).fillna('').astype(str).to_dict('records'),
+            'columns': list(merged.columns),
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
+
+@app.route('/api/list_outputs', methods=['GET'])
+def list_outputs():
+    """Return list of CSV files in the outputs directory for the append selector."""
+    try:
+        files = [f for f in os.listdir(OUTPUT_DIR) if f.endswith('.csv')]
+        files.sort(key=lambda f: os.path.getmtime(os.path.join(OUTPUT_DIR, f)), reverse=True)
+        return jsonify({'files': files})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5051, host='0.0.0.0')
