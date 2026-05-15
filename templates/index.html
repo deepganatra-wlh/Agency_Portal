@@ -368,7 +368,23 @@ SYSTEM COMMISSION</textarea>
     <div class="fr3">
       <div class="fg"><label>RTO Code Column Header</label><input type="text" id="rto-col" value="RTO CODE"/></div>
       <div class="fg"><label>Cluster Column Header</label><input type="text" id="rto-clu-col" value="UW CLUSTER (26-27)"/></div>
+      <div class="fg"></div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;padding:11px 14px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;">
+      <input type="checkbox" id="rto-use-cat" checked onchange="toggleRtoCatCol()" style="margin-top:3px;flex-shrink:0"/>
+      <div>
+        <label for="rto-use-cat" style="font-size:12.5px;font-weight:600;color:var(--tx);text-transform:none;letter-spacing:0;cursor:pointer;display:inline">
+          Use Category Column for RTO lookup
+        </label>
+        <div class="hint" style="margin-top:3px">
+          When enabled, RTO codes are filtered by both Cluster <em>and</em> Product Category. When disabled, all RTO codes for the matching Cluster are returned (Category column is ignored entirely).
+        </div>
+      </div>
+    </div>
+    <div id="rto-cat-col-wrap" class="fr3" style="margin-top:-4px">
       <div class="fg"><label>Category Column Header</label><input type="text" id="rto-cat-col" value="PRODUCT CATEGORY"/></div>
+      <div class="fg"></div>
+      <div class="fg"></div>
     </div>
   </div>
   <div class="card">
@@ -809,6 +825,12 @@ function renderAgentRows(){
     </div>`).join('');
 }
 
+// ──────────────── RTO Category Toggle ─────────────────────────────────────────
+function toggleRtoCatCol(){
+  const use = document.getElementById('rto-use-cat').checked;
+  document.getElementById('rto-cat-col-wrap').style.display = use ? '' : 'none';
+}
+
 // ──────────────── Norm Rows ────────────────────────────────────────────────────
 function initNormRows(){
   S.normRows=[
@@ -1120,7 +1142,8 @@ async function runProcess(){
         rto_header_row:+document.getElementById('rto-hr').value,
         rto_col:document.getElementById('rto-col').value,
         rto_cluster_col:document.getElementById('rto-clu-col').value,
-        rto_cat_col:document.getElementById('rto-cat-col').value,
+        rto_use_cat:document.getElementById('rto-use-cat').checked,
+        rto_cat_col:document.getElementById('rto-use-cat').checked ? document.getElementById('rto-cat-col').value : null,
         col_transforms:S.colTransforms.filter(r=>r.col&&r.op&&r.value!==''),
         output_format:S.outputFormat.filter(r=>r.col.trim()),
         config
@@ -1197,6 +1220,7 @@ function exportConfig(){
     rto_hr:      document.getElementById('rto-hr').value,
     rto_col:     document.getElementById('rto-col').value,
     rto_clu_col: document.getElementById('rto-clu-col').value,
+    rto_use_cat: document.getElementById('rto-use-cat').checked,
     rto_cat_col: document.getElementById('rto-cat-col').value,
     normRows:    S.normRows,
     // Step 6 — Output settings
@@ -1268,6 +1292,10 @@ function importConfig(input){
       set('rto-sheet', cfg.rto_sheet); set('rto-hr',      cfg.rto_hr);
       set('rto-col',   cfg.rto_col);   set('rto-clu-col', cfg.rto_clu_col);
       set('rto-cat-col', cfg.rto_cat_col);
+      if(cfg.rto_use_cat != null){
+        document.getElementById('rto-use-cat').checked = cfg.rto_use_cat;
+        toggleRtoCatCol();
+      }
       if(Array.isArray(cfg.normRows)){ S.normRows=cfg.normRows; renderNormRows && renderNormRows(); }
       // Output settings
       set('out-fn', cfg.out_fn); set('out-span-outgo', cfg.out_span_outgo);

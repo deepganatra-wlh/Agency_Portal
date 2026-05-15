@@ -139,7 +139,8 @@ def read_sheet_headers(path, sheet, header_rows, start_row, start_col, n_preview
 # ══════════════════════════════════════════════════════════════
 
 def build_rto_index(path, sheet, header_row,
-                    rto_col='RTO CODE', cluster_col='UW CLUSTER (25-26)', cat_col='PRODUCT CATEGORY'):
+                    rto_col='RTO CODE', cluster_col='UW CLUSTER (25-26)', cat_col='PRODUCT CATEGORY',
+                    use_category=True):
     wb = openpyxl.load_workbook(path, data_only=True)
     ws = wb[sheet]
     headers = {}
@@ -147,7 +148,7 @@ def build_rto_index(path, sheet, header_row,
         v = ws.cell(header_row, c).value
         if v: headers[str(v).strip().upper()] = c
     rtoc = headers.get(rto_col.upper())
-    catc = headers.get(cat_col.upper())
+    catc = headers.get(cat_col.upper()) if use_category else None
     # Auto-detect cluster column: try exact match first, then any "UW CLUSTER" variant
     cluc = headers.get(cluster_col.upper())
     if not cluc:
@@ -163,21 +164,33 @@ def build_rto_index(path, sheet, header_row,
         cat = ws.cell(r, catc).value if catc else None
         if rto:
             all_codes.append(str(rto).strip())
-            if clu and cat:
-                key = (str(clu).strip().upper(), str(cat).strip().upper())
-                index.setdefault(key, set()).add(str(rto).strip())
+            if use_category:
+                # Index by (cluster, category) — original behaviour
+                if clu and cat:
+                    key = (str(clu).strip().upper(), str(cat).strip().upper())
+                    index.setdefault(key, set()).add(str(rto).strip())
+            else:
+                # Index by cluster only
+                if clu:
+                    key = (str(clu).strip().upper(),)
+                    index.setdefault(key, set()).add(str(rto).strip())
     wb.close()
     return index, sorted(set(all_codes))
 
 
-def lookup_rto(index, all_codes, cluster, category, norm_map=None, fallback_to_all=True):
-    def _try(clu, cat):
-        return index.get((str(clu).strip().upper(), str(cat).strip().upper()))
-    codes = _try(cluster, category)
-    if not codes and norm_map:
-        norm_cat = norm_map.get(category.strip().upper())
-        if norm_cat:
-            codes = _try(cluster, norm_cat)
+def lookup_rto(index, all_codes, cluster, category, norm_map=None, fallback_to_all=True, use_category=True):
+    if use_category:
+        def _try(clu, cat):
+            return index.get((str(clu).strip().upper(), str(cat).strip().upper()))
+        codes = _try(cluster, category)
+        if not codes and norm_map:
+            norm_cat = norm_map.get(category.strip().upper())
+            if norm_cat:
+                codes = _try(cluster, norm_cat)
+    else:
+        # Cluster-only mode: ignore category entirely
+        codes = index.get((str(cluster).strip().upper(),))
+
     if not codes:
         if fallback_to_all and all_codes:
             return ','.join(all_codes)
@@ -350,8 +363,10 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
             out.update(extra)
 
             # RTO codes
-            if rto_index and uw_clust and rto_cat:
-                rto = lookup_rto(rto_index, all_rto_codes or [], uw_clust, rto_cat, rto_norm)
+            rto_use_cat = config.get('_rto_use_cat', True)
+            if rto_index and uw_clust and (rto_cat or not rto_use_cat):
+                rto = lookup_rto(rto_index, all_rto_codes or [], uw_clust, rto_cat, rto_norm,
+                                 use_category=rto_use_cat)
             else:
                 rto = 'ANY'
             out[rto_code_c] = rto
@@ -611,12 +626,13 @@ def process():
         config = d.get('config', {})
         config['filepath'] = d['filepath']
 
-        rto_index = None; all_rto = []
+        rto_index = None; all_rto = []; rto_use_cat = True
         # Use dedicated RTO file if uploaded; otherwise fall back to the main grid file
         # (RTO sheet is often inside the same workbook as the grid)
         rto_src = d.get('rto_filepath')
         if not rto_src or not os.path.exists(str(rto_src)):
             rto_src = d.get('filepath')   # same workbook fallback
+        rto_use_cat = d.get('rto_use_cat', True)
         if rto_src and os.path.exists(str(rto_src)):
             try:
                 rto_index, all_rto = build_rto_index(
@@ -625,10 +641,12 @@ def process():
                     d.get('rto_header_row', 2),
                     d.get('rto_col', 'RTO CODE'),
                     d.get('rto_cluster_col', 'UW CLUSTER (26-27)'),
-                    d.get('rto_cat_col', 'PRODUCT CATEGORY')
+                    d.get('rto_cat_col', 'PRODUCT CATEGORY'),
+                    use_category=rto_use_cat
                 )
             except Exception as rto_err:
                 print(f'[WARN] RTO index build failed: {rto_err}')
+        config['_rto_use_cat'] = rto_use_cat
 
         rows, skipped_rows, skipped_cells = process_matrix(config, rto_index, all_rto)
 
