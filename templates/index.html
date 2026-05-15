@@ -154,6 +154,17 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button class="ni" id="ni-8" onclick="goStep(8)"><span class="nb" id="nb-8">⇌</span>CSV Merger</button>
   </nav>
   <div class="sf">
+    <div style="font-size:9.5px;color:var(--t3);font-family:var(--mo);margin-bottom:7px">CONFIG PRESETS</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+      <button class="btn btn-sec btn-sm" onclick="exportConfig()" style="width:100%;justify-content:center;gap:6px">
+        <span>⬇</span> Export Config
+      </button>
+      <label class="btn btn-sec btn-sm" style="width:100%;justify-content:center;gap:6px;cursor:pointer;margin:0">
+        <span>⬆</span> Import Config
+        <input type="file" id="cfg-import-input" accept=".json" style="display:none" onchange="importConfig(this)"/>
+      </label>
+    </div>
+    <div id="cfg-import-status" style="font-size:10px;font-family:var(--mo);margin-bottom:10px;display:none"></div>
     <div style="font-size:9.5px;color:var(--t3);font-family:var(--mo);margin-bottom:7px">MODE LOGIC</div>
     <div style="font-size:11px;color:var(--t2);line-height:1.8;">
       <span class="chip chip-re">Special</span> Block/IRDA/MISP/SYS → IRDA outgo<br/>
@@ -633,8 +644,12 @@ async function doUpload(){
     const sel=document.getElementById('cfg-sheet');
     sel.innerHTML=d.sheets.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join('');
     // Smart sheet selection
-    const prefs=['Special Matrix-Comp.-1-31','Special(different)-1-31','Special Matrix','Sheet1'];
-    for(const p of prefs) if(d.sheets.includes(p)){sel.value=p;break;}
+    if(S._pendingSheetName && d.sheets.includes(S._pendingSheetName)){
+      sel.value=S._pendingSheetName; S._pendingSheetName=null;
+    } else {
+      const prefs=['Special Matrix-Comp.-1-31','Special(different)-1-31','Special Matrix','Sheet1'];
+      for(const p of prefs) if(d.sheets.includes(p)){sel.value=p;break;}
+    }
     markDone(1); btn.innerHTML='Upload &amp; Continue →'; btn.disabled=false;
     goStep(2);
   }catch(e){btn.disabled=false;btn.innerHTML='Upload &amp; Continue →';alert(e.message);}
@@ -1137,6 +1152,148 @@ async function runProcess(){
 
 function dlResult(){if(S.result) window.location.href=`/api/download/${S.result.output_filename}`;}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ──────────────── Export / Import Config ───────────────────────────────────────
+function exportConfig(){
+  const cfg = {
+    _version: 1,
+    _exported: new Date().toISOString(),
+    mode: S.mode,
+    // Step 2 — Sheet & Headers
+    sheet_name:     document.getElementById('cfg-sheet').value,
+    header_row1:    document.getElementById('cfg-hr1').value,
+    header_row2:    document.getElementById('cfg-hr2').value,
+    header_row3:    document.getElementById('cfg-hr3').value,
+    data_start_row: document.getElementById('cfg-dsr').value,
+    rate_cols_start:document.getElementById('cfg-sc').value,
+    // Meta column positions
+    mc_imd_code: document.getElementById('mc-imd-code').value,
+    mc_imd_name: document.getElementById('mc-imd-name').value,
+    mc_rel:      document.getElementById('mc-rel').value,
+    mc_imd_type: document.getElementById('mc-imd-type').value,
+    mc_vol_ll:   document.getElementById('mc-vol-ll').value,
+    mc_vol_ul:   document.getElementById('mc-vol-ul').value,
+    mc_vol_rem:  document.getElementById('mc-vol-rem').value,
+    mc_cluster:  document.getElementById('mc-cluster').value,
+    // Value logic
+    ignore_values: document.getElementById('ignore-vals').value,
+    irda_outgo:    document.getElementById('irda-outgo').value,
+    irda_prct:     document.getElementById('irda-prct').value,
+    norm_outgo:    document.getElementById('norm-outgo').value,
+    skip_vol_biz:  document.getElementById('skip-vol-biz').value,
+    // Step 3 — Column config (full S state)
+    colCfg: S.colCfg,
+    // Step 4 — GWP & Agent map
+    vgRows:    S.vgRows,
+    agentRows: S.agentRows,
+    std_ll:    document.getElementById('std-ll').value,
+    std_ul:    document.getElementById('std-ul').value,
+    prime_ll:  document.getElementById('prime-ll').value,
+    prime_ul:  document.getElementById('prime-ul').value,
+    agency_ll: document.getElementById('agency-ll').value,
+    agency_ul: document.getElementById('agency-ul').value,
+    // Step 5 — RTO config
+    rto_sheet:   document.getElementById('rto-sheet').value,
+    rto_hr:      document.getElementById('rto-hr').value,
+    rto_col:     document.getElementById('rto-col').value,
+    rto_clu_col: document.getElementById('rto-clu-col').value,
+    rto_cat_col: document.getElementById('rto-cat-col').value,
+    normRows:    S.normRows,
+    // Step 6 — Output settings
+    out_fn:         document.getElementById('out-fn').value,
+    out_span_outgo: document.getElementById('out-span-outgo').value,
+    out_span_prct:  document.getElementById('out-span-prct').value,
+    out_rto_code:   document.getElementById('out-rto-code').value,
+    out_rto_clu:    document.getElementById('out-rto-clu').value,
+    out_parent:     document.getElementById('out-parent').value,
+    out_primary:    document.getElementById('out-primary').value,
+    out_ag_grp:     document.getElementById('out-ag-grp').value,
+    out_biz_mix:    document.getElementById('out-biz-mix').value,
+    staticFields:   S.staticFields,
+    colDefaults:    S.colDefaults,
+    colTransforms:  S.colTransforms,
+    outputFormat:   S.outputFormat,
+  };
+
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `agency_grid_config_${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+
+  const st = document.getElementById('cfg-import-status');
+  st.style.cssText = 'display:block;color:var(--ac3)';
+  st.textContent = '✓ Config exported!';
+  setTimeout(()=>{ st.style.display='none'; }, 3000);
+}
+
+function importConfig(input){
+  const file = input.files[0]; if(!file) return;
+  const st = document.getElementById('cfg-import-status');
+  st.style.cssText = 'display:block;color:var(--t2)';
+  st.textContent = '⏳ Loading config…';
+
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const cfg = JSON.parse(e.target.result);
+      if(!cfg._version) throw new Error('Not a valid Agency Grid config file.');
+
+      const set = (id, val) => { const el=document.getElementById(id); if(el && val!=null) el.value=val; };
+
+      if(cfg.mode) setMode(cfg.mode);
+
+      // Step 2
+      set('cfg-hr1', cfg.header_row1); set('cfg-hr2', cfg.header_row2);
+      set('cfg-hr3', cfg.header_row3); set('cfg-dsr', cfg.data_start_row);
+      set('cfg-sc',  cfg.rate_cols_start);
+      // Meta columns
+      set('mc-imd-code', cfg.mc_imd_code); set('mc-imd-name', cfg.mc_imd_name);
+      set('mc-rel',      cfg.mc_rel);      set('mc-imd-type',  cfg.mc_imd_type);
+      set('mc-vol-ll',   cfg.mc_vol_ll);   set('mc-vol-ul',    cfg.mc_vol_ul);
+      set('mc-vol-rem',  cfg.mc_vol_rem);  set('mc-cluster',   cfg.mc_cluster);
+      // Value logic
+      set('ignore-vals', cfg.ignore_values); set('irda-outgo',   cfg.irda_outgo);
+      set('irda-prct',   cfg.irda_prct);     set('norm-outgo',   cfg.norm_outgo);
+      set('skip-vol-biz',cfg.skip_vol_biz);
+      // Column config
+      if(Array.isArray(cfg.colCfg)){ S.colCfg=cfg.colCfg; renderColTable && renderColTable(); }
+      // GWP & Agent
+      if(Array.isArray(cfg.vgRows)){    S.vgRows=cfg.vgRows;       renderVgRows    && renderVgRows(); }
+      if(Array.isArray(cfg.agentRows)){ S.agentRows=cfg.agentRows; renderAgentRows && renderAgentRows(); }
+      set('std-ll', cfg.std_ll); set('std-ul', cfg.std_ul);
+      set('prime-ll', cfg.prime_ll); set('prime-ul', cfg.prime_ul);
+      set('agency-ll', cfg.agency_ll); set('agency-ul', cfg.agency_ul);
+      // RTO config
+      set('rto-sheet', cfg.rto_sheet); set('rto-hr',      cfg.rto_hr);
+      set('rto-col',   cfg.rto_col);   set('rto-clu-col', cfg.rto_clu_col);
+      set('rto-cat-col', cfg.rto_cat_col);
+      if(Array.isArray(cfg.normRows)){ S.normRows=cfg.normRows; renderNormRows && renderNormRows(); }
+      // Output settings
+      set('out-fn', cfg.out_fn); set('out-span-outgo', cfg.out_span_outgo);
+      set('out-span-prct', cfg.out_span_prct); set('out-rto-code', cfg.out_rto_code);
+      set('out-rto-clu', cfg.out_rto_clu); set('out-parent', cfg.out_parent);
+      set('out-primary', cfg.out_primary); set('out-ag-grp', cfg.out_ag_grp);
+      set('out-biz-mix', cfg.out_biz_mix);
+      if(Array.isArray(cfg.staticFields)){ S.staticFields=cfg.staticFields; renderStaticFields && renderStaticFields(); }
+      if(Array.isArray(cfg.colDefaults)){  S.colDefaults=cfg.colDefaults;   renderColDefaults  && renderColDefaults(); }
+      if(Array.isArray(cfg.colTransforms)){S.colTransforms=cfg.colTransforms;renderTransforms   && renderTransforms(); }
+      if(Array.isArray(cfg.outputFormat)){ S.outputFormat=cfg.outputFormat; renderOutputFormat && renderOutputFormat(); }
+
+      // Store sheet name — applied after file upload when the sheet dropdown is populated
+      if(cfg.sheet_name) S._pendingSheetName = cfg.sheet_name;
+
+      st.style.color = 'var(--ac3)';
+      st.textContent = `✓ Config imported from "${file.name}" — now upload your Excel file and continue`;
+      setTimeout(()=>{ st.style.display='none'; }, 6000);
+    }catch(err){
+      st.style.color = 'var(--ac2)';
+      st.textContent = `❌ Import failed: ${err.message}`;
+    }
+    input.value = ''; // allow re-import of same file
+  };
+  reader.readAsText(file);
+}
 
 // ──────────────── Init ─────────────────────────────────────────────────────────
 setMode('special');
