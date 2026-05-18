@@ -868,6 +868,14 @@ def merge_csv():
 
         merged = pd.concat(all_dfs, ignore_index=True)
 
+        # Apply column ordering if provided
+        col_order = request.form.getlist('col_order[]')
+        if col_order:
+            # Only keep cols that actually exist; append any remaining cols not in the order list
+            ordered = [c for c in col_order if c in merged.columns]
+            remaining = [c for c in merged.columns if c not in ordered]
+            merged = merged[ordered + remaining]
+
         out_fn = f"{output_name}.csv"
         out_path = os.path.join(OUTPUT_DIR, out_fn)
         merged.to_csv(out_path, index=False)

@@ -125,6 +125,16 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .chip-re{background:rgba(239,68,68,.1);color:var(--ac2);}
 .chip-gr{background:rgba(16,185,129,.1);color:var(--ac3);}
 
+
+/* ── Merger column sequencer ── */
+.col-seq-grid{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0;min-height:44px;}
+.col-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:6px;
+  background:var(--s3);border:1px solid var(--b2);font-family:var(--mo);font-size:10.5px;
+  color:var(--tx);cursor:grab;user-select:none;transition:border-color .15s,background .15s;}
+.col-pill:hover{border-color:var(--ac);background:var(--bg);}
+.col-pill.dragging{opacity:.35;cursor:grabbing;}
+.col-pill.drag-over{border-color:var(--ac);background:rgba(245,158,11,.12);}
+.col-pill .drag-handle{color:var(--t3);font-size:11px;}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--s1)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
@@ -546,6 +556,19 @@ SYSTEM COMMISSION</textarea>
       </thead>
       <tbody id="mg-file-tbody"></tbody>
     </table>
+  </div>
+
+
+  <!-- Column Sequence Card -->
+  <div class="card" id="mg-col-seq-card">
+    <div class="ct">Output Column Sequence
+      <span class="bx bx-pu">drag pills to reorder · all columns always included</span>
+      <button class="btn btn-sec btn-sm" style="margin-left:auto" onclick="resetMergeColOrder()">↺ Reset to Default</button>
+    </div>
+    <div class="sb sb-info" style="margin-bottom:10px;font-size:11.5px">
+      Drag and drop the column pills below to set the exact column order in the output CSV. All columns are always written — this only controls their sequence.
+    </div>
+    <div class="col-seq-grid" id="mg-col-seq"></div>
   </div>
 
   <!-- Output config -->
@@ -1333,6 +1356,69 @@ initOutputFormat();
 renderAgentRows();
 renderVgRows();
 
+
+// ──────────────── Merger Column Sequencer ─────────────────────────────────────
+
+const MERGE_DEFAULT_COL_ORDER = ['version_id', 'parent_agent_code', 'agent_group_code', 'biz_mix', 'two_wheeler_category', 'type_of_business', 'cpan_prct', 'rto_cluster', 'rto_code', 'gross_vehicle_weight_ll', 'gross_vehicle_weight_ul', 'cubic_capacity_ll', 'cubic_capacity_ul', 'cpan_outgo', 'total_gwp_ll', 'total_gwp_ul', 'totalgwp_keybrok_agency_ll', 'totalgwp_keybrok_agency_ul', 'totalgwp_pvt_car_ll', 'totalgwp_pvt_car_ul', 'totalgwp_pvtcar1plus1_ll', 'totalgwp_pvtcar1plus1_ul', 'body_type', 'fuel_type', 'ncb_ll', 'ncb_ul', 'vehicle_age_ll', 'vehicle_age_ul', 'bus_type', 'totalgwp_satp_ll', 'totalgwp_satp_ul', 'totalgwp_tractor_ll', 'totalgwp_tractor_ul'];
+let mergeColOrder = [...MERGE_DEFAULT_COL_ORDER];
+let _seqDragIdx = null;
+
+function renderMergeColSeq() {
+  const grid = document.getElementById('mg-col-seq');
+  if (!grid) return;
+  grid.innerHTML = mergeColOrder.map((col, i) => `
+    <div class="col-pill" draggable="true"
+      data-idx="${i}"
+      ondragstart="seqDragStart(event,${i})"
+      ondragover="seqDragOver(event,${i})"
+      ondragleave="seqDragLeave(event,${i})"
+      ondrop="seqDrop(event,${i})"
+      ondragend="seqDragEnd()">
+      <span class="drag-handle">⠿</span>
+      <span>${esc(col)}</span>
+    </div>`).join('');
+}
+
+function seqDragStart(e, idx) {
+  _seqDragIdx = idx;
+  e.target.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+function seqDragOver(e, idx) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.col-pill').forEach(p => p.classList.remove('drag-over'));
+  const pill = document.querySelector(`.col-pill[data-idx="${idx}"]`);
+  if (pill && idx !== _seqDragIdx) pill.classList.add('drag-over');
+}
+function seqDragLeave(e, idx) {
+  const pill = document.querySelector(`.col-pill[data-idx="${idx}"]`);
+  if (pill) pill.classList.remove('drag-over');
+}
+function seqDrop(e, toIdx) {
+  e.preventDefault();
+  if (_seqDragIdx === null || _seqDragIdx === toIdx) return;
+  const moved = mergeColOrder.splice(_seqDragIdx, 1)[0];
+  mergeColOrder.splice(toIdx, 0, moved);
+  _seqDragIdx = null;
+  renderMergeColSeq();
+}
+function seqDragEnd() {
+  _seqDragIdx = null;
+  document.querySelectorAll('.col-pill').forEach(p => {
+    p.classList.remove('dragging');
+    p.classList.remove('drag-over');
+  });
+}
+
+function resetMergeColOrder() {
+  mergeColOrder = [...MERGE_DEFAULT_COL_ORDER];
+  renderMergeColSeq();
+}
+
+// Initialise on load
+document.addEventListener('DOMContentLoaded', renderMergeColSeq);
+
 // ──────────────── CSV Merger ────────────────────────────────────────────────
 
 const GWP_OPTIONS = {
@@ -1449,6 +1535,7 @@ async function runMerge(){
   });
   fd.append('output_name', document.getElementById('mg-out-name').value || 'merged_output');
   fd.append('append_filename', document.getElementById('mg-append-sel').value || '');
+  mergeColOrder.forEach(col => fd.append('col_order[]', col));
 
   try{
     const r = await fetch('/api/merge_csv', {method:'POST', body:fd});
