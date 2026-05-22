@@ -220,6 +220,10 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
     # column_defaults: dict of {output_col_name: default_value} applied to every output row
     # when the field would otherwise be absent or empty. Set via UI "Column Defaults" section.
     col_defaults = config.get('column_defaults', {})
+    # extra_meta_cols: [{label, col_idx}] — optional month-specific columns
+    extra_meta_cfg = config.get('extra_meta_cols', [])
+    extra_meta_cols = [(e['label'], int(e['col_idx'])) for e in extra_meta_cfg
+                       if e.get('label') and int(e.get('col_idx', 0)) > 0]
     std_ll      = config.get('std_gwp_ll_col',    'Total Gwp Ll*')
     std_ul      = config.get('std_gwp_ul_col',    'Total Gwp Ul*')
     prime_ll    = config.get('prime_gwp_ll_col',  'Total Gwp Ll*')
@@ -268,6 +272,8 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
         vol_ul   = cell(row_idx, ci('vol_ul'))
         vol_rem  = cell(row_idx, ci('vol_remark'))
         uw_clust = cell(row_idx, ci('uw_cluster'))
+        # Extra meta column values (month-specific, e.g. Detariff Discount LL/UL)
+        extra_meta_vals = {label: cell(row_idx, col) for label, col in extra_meta_cols}
 
         # ── Blank row guard ──────────────────────────────────────────────────
         # col_idx=0 means absent. Only check columns that actually exist.
@@ -361,6 +367,9 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
 
             # Extra fields (type of business, fuel type, CC, GWP, vehicle age etc.)
             out.update(extra)
+
+            # Extra meta columns (month-specific, e.g. Detariff Discount LL/UL)
+            out.update(extra_meta_vals)
 
             # RTO codes
             rto_use_cat = config.get('_rto_use_cat', True)
