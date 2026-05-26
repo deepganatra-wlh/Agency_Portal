@@ -224,12 +224,16 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
     extra_meta_cfg = config.get('extra_meta_cols', [])
     extra_meta_cols = [(e['label'], int(e['col_idx'])) for e in extra_meta_cfg
                        if e.get('label') and int(e.get('col_idx', 0)) > 0]
-    std_ll      = config.get('std_gwp_ll_col',    'Total Gwp Ll*')
-    std_ul      = config.get('std_gwp_ul_col',    'Total Gwp Ul*')
-    prime_ll    = config.get('prime_gwp_ll_col',  'Total Gwp Ll*')
-    prime_ul    = config.get('prime_gwp_ul_col',  'Total Gwp Ul*')
-    agency_ll   = config.get('agency_gwp_ll_col', 'Totalgwp Keybrok Agency Ll*')
-    agency_ul   = config.get('agency_gwp_ul_col', 'Totalgwp Keybrok Agency Ul*')
+    std_ll      = config.get('std_gwp_ll_col',        'Total Gwp Ll*')
+    std_ul      = config.get('std_gwp_ul_col',        'Total Gwp Ul*')
+    prime_ll    = config.get('prime_gwp_ll_col',      'Total Gwp Ll*')
+    prime_ul    = config.get('prime_gwp_ul_col',      'Total Gwp Ul*')
+    agency_ll   = config.get('agency_gwp_ll_col',     'Totalgwp Keybrok Agency Ll*')
+    agency_ul   = config.get('agency_gwp_ul_col',     'Totalgwp Keybrok Agency Ul*')
+    keybrok_ll  = config.get('keybrok_gwp_ll_col',    'Totalgwp Keybrok Agency Ll*')
+    keybrok_ul  = config.get('keybrok_gwp_ul_col',    'Totalgwp Keybrok Agency Ul*')
+    # imd_gwp_map: {imd_type_upper: {ll_col, ul_col}} — per-IMD-type fallback for std-grid rows
+    imd_gwp_map = {k.strip().upper(): v for k, v in config.get('imd_gwp_map', {}).items()}
     static_flds = config.get('output_static_fields', {})
     rto_norm    = {k.upper():v for k,v in config.get('rto_norm_map', {
         'PCV 3W':'PCV','PCV-BUS':'PCV','PCV-TAXI':'PCV',
@@ -337,7 +341,9 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
             # GWP LL/UL
             gwp_ll_c, gwp_ul_c = _resolve_gwp_cols(
                 vol_rem, imd_type, vol_gwp_map,
-                std_ll, std_ul, prime_ll, prime_ul, agency_ll, agency_ul
+                std_ll, std_ul, prime_ll, prime_ul,
+                agency_ll, agency_ul, keybrok_ll, keybrok_ul,
+                imd_gwp_map
             )
             if gwp_ll_c: out[gwp_ll_c] = vol_ll
             if gwp_ul_c: out[gwp_ul_c] = vol_ul
@@ -392,15 +398,36 @@ def process_matrix(config, rto_index=None, all_rto_codes=None):
 
 
 def _resolve_gwp_cols(vol_rem, imd_type, vol_gwp_map,
-                      std_ll, std_ul, prime_ll, prime_ul, agency_ll, agency_ul):
+                      std_ll, std_ul, prime_ll, prime_ul,
+                      agency_ll, agency_ul, keybrok_ll, keybrok_ul,
+                      imd_gwp_map=None):
+    """
+    Priority order:
+    1. Explicit vol_rem match in vol_gwp_map (e.g. 'PCV-3W' → custom cols)
+    2. 'std-grid' vol_rem:
+       a. Check imd_gwp_map for per-IMD-type override (e.g. 'Agency' → agency cols, 'Key Broking' → keybrok cols)
+       b. Legacy fallback: 'prime' in imd_type → prime cols; else → agency cols
+    3. Default (std_ll / std_ul)
+    """
     vr = (vol_rem or '').strip().lower()
+    # 1. Explicit vol_gwp_map match
     for k, v in vol_gwp_map.items():
         if k.lower() == vr:
             return v.get('ll_col', ''), v.get('ul_col', '')
+    # 2. std-grid logic
     if vr == 'std-grid':
-        if imd_type and 'prime' in imd_type.lower():
+        it_upper = (imd_type or '').strip().upper()
+        # 2a. Per-IMD-type map (new, explicit)
+        if imd_gwp_map and it_upper and it_upper in imd_gwp_map:
+            entry = imd_gwp_map[it_upper]
+            return entry.get('ll_col', ''), entry.get('ul_col', '')
+        # 2b. Legacy keyword fallbacks
+        if it_upper and 'PRIME' in it_upper:
             return prime_ll, prime_ul
+        if it_upper and 'KEY' in it_upper and 'BROK' in it_upper:
+            return keybrok_ll, keybrok_ul
         return agency_ll, agency_ul
+    # 3. Default
     return std_ll, std_ul
 
 

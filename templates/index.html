@@ -347,22 +347,49 @@ SYSTEM COMMISSION</textarea>
     <div id="vg-rows"></div>
     <hr class="divider"/>
     <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--t2)">Default / Fallback GWP Columns</div>
+    <div class="sb sb-info" style="font-size:11.5px;margin-bottom:12px;">
+      💡 These are used when a row's <strong>Vol Consideration</strong> is <code>std-grid</code> (or has no match above).
+      The <strong>Per-IMD-Type map</strong> below takes priority — if an IMD Type is listed there, its columns are used.
+      Otherwise the legacy fallbacks (Prime / Agency / Key Broking) apply.
+    </div>
     <div class="fr3">
-      <div class="fg"><label>Default GWP LL Col</label><input type="text" id="std-ll" value="Total Gwp Ll*"/></div>
-      <div class="fg"><label>Default GWP UL Col</label><input type="text" id="std-ul" value="Total Gwp Ul*"/></div>
+      <div class="fg"><label>Default GWP LL Col <span style="color:var(--t3)">(non-std-grid rows)</span></label><input type="text" id="std-ll" value="Total Gwp Ll*"/></div>
+      <div class="fg"><label>Default GWP UL Col <span style="color:var(--t3)">(non-std-grid rows)</span></label><input type="text" id="std-ul" value="Total Gwp Ul*"/></div>
       <div></div>
     </div>
     <div class="fr3">
-      <div class="fg"><label>Prime Broking GWP LL</label><input type="text" id="prime-ll" value="Total Gwp Ll*"/></div>
-      <div class="fg"><label>Prime Broking GWP UL</label><input type="text" id="prime-ul" value="Total Gwp Ul*"/></div>
+      <div class="fg"><label>Prime Broking GWP LL <span style="color:var(--t3)">(std-grid fallback)</span></label><input type="text" id="prime-ll" value="Total Gwp Ll*"/></div>
+      <div class="fg"><label>Prime Broking GWP UL <span style="color:var(--t3)">(std-grid fallback)</span></label><input type="text" id="prime-ul" value="Total Gwp Ul*"/></div>
       <div></div>
     </div>
     <div class="fr3">
-      <div class="fg"><label>Agency / Key Broking GWP LL</label><input type="text" id="agency-ll" value="Totalgwp Keybrok Agency Ll*"/></div>
-      <div class="fg"><label>Agency / Key Broking GWP UL</label><input type="text" id="agency-ul" value="Totalgwp Keybrok Agency Ul*"/></div>
+      <div class="fg"><label>Agency GWP LL <span style="color:var(--t3)">(std-grid fallback)</span></label><input type="text" id="agency-ll" value="Totalgwp Keybrok Agency Ll*"/></div>
+      <div class="fg"><label>Agency GWP UL <span style="color:var(--t3)">(std-grid fallback)</span></label><input type="text" id="agency-ul" value="Totalgwp Keybrok Agency Ul*"/></div>
       <div></div>
     </div>
-    <div class="hint">For "std-grid" Vol Consideration: Prime Broking uses Prime cols; others use Agency cols.</div>
+    <div class="fr3">
+      <div class="fg"><label>Key Broking GWP LL <span style="color:var(--t3)">(std-grid fallback)</span></label><input type="text" id="keybrok-ll" value="Totalgwp Keybrok Agency Ll*"/></div>
+      <div class="fg"><label>Key Broking GWP UL <span style="color:var(--t3)">(std-grid fallback)</span></label><input type="text" id="keybrok-ul" value="Totalgwp Keybrok Agency Ul*"/></div>
+      <div></div>
+    </div>
+    <div class="hint" style="margin-bottom:14px">Legacy fallback order for <code>std-grid</code>: per-IMD-type map (below) → Prime keyword → Key Broking keyword → Agency.</div>
+
+    <!-- Per-IMD-Type GWP Map -->
+    <div style="border-top:1px solid var(--b2);padding-top:13px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <b style="font-size:12.5px;color:var(--tx)">Per-IMD-Type GWP Column Override</b>
+        <span class="bx bx-pu">for std-grid rows — takes priority over legacy fallbacks above</span>
+        <button class="btn btn-sec btn-sm" onclick="addImdGwpRow()" style="margin-left:auto">+ Add IMD Type</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1.2fr 1.6fr 1.6fr 30px;gap:8px;margin-bottom:5px;padding:0 2px;">
+        <div style="font-size:9.5px;font-family:var(--mo);color:var(--t3);text-transform:uppercase;letter-spacing:.05em">IMD Type (exact)</div>
+        <div style="font-size:9.5px;font-family:var(--mo);color:var(--t3);text-transform:uppercase;letter-spacing:.05em">GWP LL Output Column</div>
+        <div style="font-size:9.5px;font-family:var(--mo);color:var(--t3);text-transform:uppercase;letter-spacing:.05em">GWP UL Output Column</div>
+        <div></div>
+      </div>
+      <div id="imd-gwp-rows"></div>
+      <p class="hint" style="margin-top:5px">Detected IMD Types auto-populate this table. Each entry maps one IMD Type to its specific GWP column pair for <code>std-grid</code> rows.</p>
+    </div>
   </div>
   <div class="card">
     <div class="ct">IMD Type → Agent Group Code Map
@@ -637,6 +664,7 @@ const S = {
   colCfg:[],       // [{col_idx, display, parent_biz, sub_label, biz_mix_output, rto_category, extra_fields{}, enabled, matched}]
   vgRows:[],       // [{vol_rem, ll_col, ul_col}]
   agentRows:[],    // [{imd_type, code}]
+  imdGwpRows:[],   // [{imd_type, ll_col, ul_col}] — per-IMD-type GWP fallback for std-grid rows
   normRows:[],     // [{from, to}]
   staticFields:[]  // [{col, val}]
   ,colDefaults:[]  // [{col, val}] — fallback for absent/empty output columns
@@ -844,11 +872,20 @@ function renderVgRows(){
 }
 
 // ──────────────── Agent Map ────────────────────────────────────────────────────
+// ──────────────── IMD Type → GWP Column Map (for std-grid rows) ───────────────
+const IMD_GWP_DEFAULTS = {
+  'Agency':        {ll:'Totalgwp Keybrok Agency Ll*', ul:'Totalgwp Keybrok Agency Ul*'},
+  'Key Broking':   {ll:'Totalgwp Keybrok Agency Ll*', ul:'Totalgwp Keybrok Agency Ul*'},
+  'Prime Broking': {ll:'Total Gwp Ll*',               ul:'Total Gwp Ul*'},
+};
+
 function buildAgentRowsFromInspect(imdVals){
   const defaults={'Agency':'Agency','Key Broking':'Key_Broking','Prime Broking':'Prime_Broking'};
   S.agentRows=Object.entries(defaults).map(([k,v])=>({imd_type:k,code:v}));
   imdVals.forEach(v=>{if(!S.agentRows.find(r=>r.imd_type===v)) S.agentRows.push({imd_type:v,code:v});});
   renderAgentRows();
+  // Also seed the per-IMD-type GWP map from detected values
+  buildImdGwpRowsFromInspect(imdVals);
 }
 function addAgentRow(){S.agentRows.push({imd_type:'',code:''});renderAgentRows();}
 function renderAgentRows(){
@@ -858,6 +895,46 @@ function renderAgentRows(){
       <span style="color:var(--t3);font-family:var(--mo);font-size:12px">→</span>
       <input type="text" placeholder="Agent Group Code" value="${esc(r.code)}" onchange="S.agentRows[${i}].code=this.value" style="flex:1"/>
       <button class="btn btn-xs btn-re" onclick="S.agentRows.splice(${i},1);renderAgentRows()">✕</button>
+    </div>`).join('');
+}
+
+function buildImdGwpRowsFromInspect(imdVals){
+  const added=new Set();
+  // Start with known defaults
+  S.imdGwpRows=Object.entries(IMD_GWP_DEFAULTS).map(([k,v])=>{
+    added.add(k);
+    return {imd_type:k, ll_col:v.ll, ul_col:v.ul};
+  });
+  // Add detected IMD types not already covered
+  imdVals.forEach(v=>{
+    if(!added.has(v)){
+      const d=IMD_GWP_DEFAULTS[v]||{ll:'',ul:''};
+      S.imdGwpRows.push({imd_type:v, ll_col:d.ll, ul_col:d.ul});
+    }
+  });
+  renderImdGwpRows();
+}
+
+function addImdGwpRow(){S.imdGwpRows.push({imd_type:'',ll_col:'',ul_col:''});renderImdGwpRows();}
+function renderImdGwpRows(){
+  const el=document.getElementById('imd-gwp-rows');
+  if(!el)return;
+  if(!S.imdGwpRows||!S.imdGwpRows.length){
+    el.innerHTML='<p class="hint" style="font-style:italic;margin:2px 0">No entries — click "+ Add IMD Type" or run sheet inspection to auto-populate.</p>';
+    return;
+  }
+  el.innerHTML=S.imdGwpRows.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1.2fr 1.6fr 1.6fr 30px;gap:8px;align-items:center;margin-bottom:7px">
+      <input type="text" placeholder="e.g. Agency" value="${esc(r.imd_type)}"
+        onchange="S.imdGwpRows[${i}].imd_type=this.value"
+        style="background:var(--bg);border:1px solid var(--b2);border-radius:5px;padding:5px 8px;color:var(--tx);font-size:12px;width:100%"/>
+      <input type="text" placeholder="GWP LL column name" value="${esc(r.ll_col)}"
+        onchange="S.imdGwpRows[${i}].ll_col=this.value"
+        style="background:var(--bg);border:1px solid var(--b2);border-radius:5px;padding:5px 8px;color:var(--tx);font-size:12px;width:100%"/>
+      <input type="text" placeholder="GWP UL column name" value="${esc(r.ul_col)}"
+        onchange="S.imdGwpRows[${i}].ul_col=this.value"
+        style="background:var(--bg);border:1px solid var(--b2);border-radius:5px;padding:5px 8px;color:var(--tx);font-size:12px;width:100%"/>
+      <button class="btn btn-xs btn-re" onclick="S.imdGwpRows.splice(${i},1);renderImdGwpRows()">✕</button>
     </div>`).join('');
 }
 
@@ -1183,6 +1260,11 @@ async function runProcess(){
     prime_gwp_ul_col:document.getElementById('prime-ul').value,
     agency_gwp_ll_col:document.getElementById('agency-ll').value,
     agency_gwp_ul_col:document.getElementById('agency-ul').value,
+    keybrok_gwp_ll_col:document.getElementById('keybrok-ll').value,
+    keybrok_gwp_ul_col:document.getElementById('keybrok-ul').value,
+    imd_gwp_map: Object.fromEntries(
+      (S.imdGwpRows||[]).filter(r=>r.imd_type).map(r=>[r.imd_type, {ll_col:r.ll_col, ul_col:r.ul_col}])
+    ),
     output_static_fields:output_static,
             column_defaults:column_defaults,
     rto_norm_map, skip_if_vol_biz:skip_vol_biz,
@@ -1273,14 +1355,17 @@ function exportConfig(){
     // Step 3 — Column config (full S state)
     colCfg: S.colCfg,
     // Step 4 — GWP & Agent map
-    vgRows:    S.vgRows,
-    agentRows: S.agentRows,
-    std_ll:    document.getElementById('std-ll').value,
-    std_ul:    document.getElementById('std-ul').value,
-    prime_ll:  document.getElementById('prime-ll').value,
-    prime_ul:  document.getElementById('prime-ul').value,
-    agency_ll: document.getElementById('agency-ll').value,
-    agency_ul: document.getElementById('agency-ul').value,
+    vgRows:     S.vgRows,
+    agentRows:  S.agentRows,
+    imdGwpRows: S.imdGwpRows,
+    std_ll:     document.getElementById('std-ll').value,
+    std_ul:     document.getElementById('std-ul').value,
+    prime_ll:   document.getElementById('prime-ll').value,
+    prime_ul:   document.getElementById('prime-ul').value,
+    agency_ll:  document.getElementById('agency-ll').value,
+    agency_ul:  document.getElementById('agency-ul').value,
+    keybrok_ll: document.getElementById('keybrok-ll').value,
+    keybrok_ul: document.getElementById('keybrok-ul').value,
     // Step 5 — RTO config
     rto_sheet:   document.getElementById('rto-sheet').value,
     rto_hr:      document.getElementById('rto-hr').value,
@@ -1353,9 +1438,11 @@ function importConfig(input){
       // GWP & Agent
       if(Array.isArray(cfg.vgRows)){    S.vgRows=cfg.vgRows;       renderVgRows    && renderVgRows(); }
       if(Array.isArray(cfg.agentRows)){ S.agentRows=cfg.agentRows; renderAgentRows && renderAgentRows(); }
+      if(Array.isArray(cfg.imdGwpRows)){ S.imdGwpRows=cfg.imdGwpRows; renderImdGwpRows && renderImdGwpRows(); }
       set('std-ll', cfg.std_ll); set('std-ul', cfg.std_ul);
       set('prime-ll', cfg.prime_ll); set('prime-ul', cfg.prime_ul);
       set('agency-ll', cfg.agency_ll); set('agency-ul', cfg.agency_ul);
+      set('keybrok-ll', cfg.keybrok_ll); set('keybrok-ul', cfg.keybrok_ul);
       // RTO config
       set('rto-sheet', cfg.rto_sheet); set('rto-hr',      cfg.rto_hr);
       set('rto-col',   cfg.rto_col);   set('rto-clu-col', cfg.rto_clu_col);
@@ -1400,6 +1487,7 @@ initTransforms();
 initOutputFormat();
 renderAgentRows();
 renderVgRows();
+buildImdGwpRowsFromInspect([]);
 
 
 // ──────────────── Merger Column Sequencer ─────────────────────────────────────
