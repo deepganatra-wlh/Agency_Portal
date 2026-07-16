@@ -141,6 +141,59 @@ tr:hover td{background:rgba(255,255,255,.02);}
 .fade{animation:fadeIn .22s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{display:none}.panel{padding:14px}.stats-row,.fr3,.fr4{grid-template-columns:1fr 1fr}.fr{grid-template-columns:1fr}}
+
+/* ── AI Assistant ── */
+.ai-fab{position:fixed;right:24px;bottom:24px;width:54px;height:54px;border-radius:50%;
+  background:linear-gradient(135deg,var(--ac),#f97316);border:none;cursor:pointer;z-index:500;
+  display:flex;align-items:center;justify-content:center;font-size:23px;box-shadow:0 6px 22px rgba(245,158,11,.4);
+  transition:transform .15s;}
+.ai-fab:hover{transform:scale(1.06);}
+.ai-fab .ai-dot{position:absolute;top:2px;right:2px;width:11px;height:11px;border-radius:50%;background:var(--ac3);border:2px solid var(--bg);}
+.ai-panel{position:fixed;right:24px;bottom:90px;width:380px;max-height:min(620px,75vh);background:var(--s1);
+  border:1px solid var(--b1);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:499;
+  display:none;flex-direction:column;overflow:hidden;}
+.ai-panel.open{display:flex;}
+.ai-head{padding:14px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:10px;background:var(--s2);}
+.ai-head .ai-avatar{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--ac),#f97316);
+  display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.ai-head-txt{flex:1;min-width:0;}
+.ai-head-txt h4{font-size:13px;font-weight:700;}
+.ai-head-txt p{font-size:10px;color:var(--t3);font-family:var(--mo);margin-top:1px;}
+.ai-close{background:none;border:none;color:var(--t2);font-size:16px;cursor:pointer;padding:4px;line-height:1;}
+.ai-close:hover{color:var(--tx);}
+.ai-ctx-pill{margin:0 16px;padding:6px 10px;border-radius:7px;background:rgba(245,158,11,.08);
+  border:1px solid rgba(245,158,11,.2);font-size:10.5px;color:var(--t2);font-family:var(--mo);
+  display:flex;align-items:center;gap:6px;margin-top:12px;}
+.ai-ctx-pill .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.ai-ctx-pill.ok .dot{background:var(--ac3);}
+.ai-ctx-pill.warn .dot{background:var(--ac);}
+.ai-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+.ai-msg{max-width:88%;font-size:12.5px;line-height:1.55;padding:9px 12px;border-radius:12px;white-space:pre-wrap;}
+.ai-msg.user{align-self:flex-end;background:var(--ac);color:#07090f;border-bottom-right-radius:3px;}
+.ai-msg.bot{align-self:flex-start;background:var(--s3);color:var(--tx);border:1px solid var(--b2);border-bottom-left-radius:3px;}
+.ai-msg.err{align-self:flex-start;background:rgba(239,68,68,.1);color:var(--ac2);border:1px solid rgba(239,68,68,.3);}
+.ai-actions{align-self:flex-start;display:flex;flex-direction:column;gap:4px;max-width:88%;}
+.ai-action-chip{font-size:10.5px;font-family:var(--mo);padding:5px 9px;border-radius:6px;
+  background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--ac3);}
+.ai-nav-btn{align-self:flex-start;font-size:11px;padding:6px 12px;border-radius:7px;background:rgba(245,158,11,.12);
+  border:1px solid var(--ac);color:var(--ac);cursor:pointer;font-family:var(--fn);}
+.ai-suggest{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 12px;}
+.ai-suggest-chip{font-size:10.5px;padding:5px 10px;border-radius:20px;background:var(--s3);border:1px solid var(--b2);
+  color:var(--t2);cursor:pointer;font-family:var(--fn);}
+.ai-suggest-chip:hover{border-color:var(--ac);color:var(--ac);}
+.ai-typing{align-self:flex-start;display:flex;gap:4px;padding:10px 12px;background:var(--s3);border-radius:12px;border:1px solid var(--b2);}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:var(--t3);animation:ai-bounce 1.2s infinite ease-in-out;}
+.ai-typing span:nth-child(2){animation-delay:.15s;} .ai-typing span:nth-child(3){animation-delay:.3s;}
+@keyframes ai-bounce{0%,60%,100%{transform:translateY(0);opacity:.5;}30%{transform:translateY(-4px);opacity:1;}}
+.ai-input-row{border-top:1px solid var(--b1);padding:10px 12px;display:flex;gap:8px;align-items:flex-end;background:var(--s2);}
+.ai-input-row textarea{flex:1;min-height:36px;max-height:110px;resize:none;font-size:12.5px;padding:8px 11px;}
+.ai-send{width:36px;height:36px;border-radius:9px;background:var(--ac);border:none;color:#07090f;cursor:pointer;
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;}
+.ai-send:disabled{background:var(--b2);color:var(--t3);cursor:not-allowed;}
+@media(max-width:480px){
+  .ai-panel{right:10px;left:10px;width:auto;bottom:80px;}
+  .ai-fab{right:16px;bottom:16px;}
+}
 </style>
 </head>
 <body>
@@ -655,6 +708,233 @@ SYSTEM COMMISSION</textarea>
 
 </div><!-- /main -->
 </div><!-- /app -->
+
+<!-- ── AI Assistant widget ──────────────────────────────────────────────── -->
+<button class="ai-fab" id="ai-fab" onclick="toggleAI()" title="AI Assistant">
+  🤖<span class="ai-dot"></span>
+</button>
+
+<div class="ai-panel" id="ai-panel">
+  <div class="ai-head">
+    <div class="ai-avatar">🤖</div>
+    <div class="ai-head-txt">
+      <h4>AI Assistant</h4>
+      <p>Powered by Groq</p>
+    </div>
+    <button class="ai-close" onclick="toggleAI(false)">✕</button>
+  </div>
+  <div class="ai-ctx-pill" id="ai-ctx-pill"></div>
+  <div class="ai-body" id="ai-body"></div>
+  <div class="ai-suggest" id="ai-suggest"></div>
+  <div class="ai-input-row">
+    <textarea id="ai-input" placeholder="Ask how to do something, or ask me to edit your config…" onkeydown="aiKeydown(event)"></textarea>
+    <button class="ai-send" id="ai-send-btn" onclick="sendAIMessage()">➤</button>
+  </div>
+</div>
+
+<script>
+// ─── AI Assistant ─────────────────────────────────────────────────────────────
+const AI = { open:false, history:[], busy:false, statusChecked:false, configured:true };
+
+function toggleAI(force) {
+  const panel = document.getElementById('ai-panel');
+  AI.open = (force===undefined) ? !AI.open : force;
+  panel.classList.toggle('open', AI.open);
+  if (AI.open) {
+    if (!AI.statusChecked) checkAIStatus();
+    if (!document.getElementById('ai-body').children.length) aiGreet();
+    updateAIContextPill();
+    document.getElementById('ai-input').focus();
+  }
+}
+
+async function checkAIStatus() {
+  AI.statusChecked = true;
+  try {
+    const res = await fetch('/api/ai/status');
+    const d = await res.json();
+    AI.configured = !!d.configured;
+    if (!AI.configured) {
+      aiAddMsg('bot', "Heads up — the AI Assistant isn't fully set up yet. The server admin needs to set a GROQ_API_KEY on the backend before I can respond. You can still browse the portal as usual!");
+    }
+  } catch(e) { /* silent — will surface on send */ }
+}
+
+function aiGreet() {
+  aiAddMsg('bot', "Hi! I'm your portal assistant. I can explain how any step works, or, once you've inspected your sheet and the Column Config table (Step 3) is populated, I can edit column mappings, GWP maps, static fields, and transforms for you directly. What do you need?");
+  renderAISuggestions();
+}
+
+function renderAISuggestions() {
+  const box = document.getElementById('ai-suggest');
+  const hasConfig = aiHasConfig();
+  const chips = hasConfig
+    ? ["Set Biz Mix Output for a column", "Add a static field", "Multiply Span Prct by 100"]
+    : ["Where do I upload my file?", "Special mode vs Normal mode?", "What is RTO Category for?"];
+  box.innerHTML = chips.map(c=>`<span class="ai-suggest-chip" onclick="aiUseSuggestion(this)">${esc(c)}</span>`).join('');
+}
+function aiUseSuggestion(el) {
+  document.getElementById('ai-input').value = el.textContent;
+  sendAIMessage();
+}
+
+function aiHasConfig() { return Array.isArray(S.colCfg) && S.colCfg.length > 0; }
+
+function updateAIContextPill() {
+  const pill = document.getElementById('ai-ctx-pill');
+  const hasConfig = aiHasConfig();
+  const modeLabel = S.mode === 'normal' ? 'Normal Mode' : 'Special Mode';
+  pill.className = 'ai-ctx-pill ' + (hasConfig ? 'ok' : 'warn');
+  pill.innerHTML = `<span class="dot"></span>${modeLabel} · ${hasConfig ? 'config loaded — I can edit it' : 'no config yet — inspect your sheet first, or ask me how'}`;
+}
+
+function aiKeydown(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendAIMessage(); }
+}
+
+function aiAddMsg(role, text) {
+  const body = document.getElementById('ai-body');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + role;
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  return div;
+}
+
+function aiAddActionChips(actions) {
+  if (!actions || !actions.length) return;
+  const applied = actions.filter(a=>a.type!=='none' && a.type!=='navigate');
+  const nav = actions.find(a=>a.type==='navigate');
+  const body = document.getElementById('ai-body');
+  if (applied.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-actions';
+    wrap.innerHTML = applied.map(a=>`<span class="ai-action-chip">✓ ${esc(aiDescribeAction(a))}</span>`).join('');
+    body.appendChild(wrap);
+  }
+  if (nav) {
+    const btn = document.createElement('button');
+    btn.className = 'ai-nav-btn';
+    btn.textContent = `→ Take me to Step ${nav.step}`;
+    btn.onclick = () => { goStep(nav.step); };
+    body.appendChild(btn);
+  }
+  body.scrollTop = body.scrollHeight;
+}
+
+function aiDescribeAction(a) {
+  switch(a.type) {
+    case 'set_col_field': return `Set col #${a.col_idx} ${a.field} → ${a.value}`;
+    case 'set_extra_field': return `Set col #${a.col_idx} extra field "${a.key}" → ${a.value}`;
+    case 'add_static_field': return `Added static field "${a.col}" = ${a.val}`;
+    case 'add_col_default': return `Added column default "${a.col}" → ${a.val}`;
+    case 'add_col_transform': return `Added transform: ${a.col} ${a.op} ${a.value}`;
+    case 'add_vg_row': return `Added GWP map for "${a.vol_rem}"`;
+    case 'add_agent_row': return `Added agent map "${a.imd_type}" → ${a.code}`;
+    case 'add_imd_gwp_row': return `Added IMD GWP map for "${a.imd_type}"`;
+    case 'add_norm_row': return `Added category normalization "${a.from}" → "${a.to}"`;
+    default: return a.type;
+  }
+}
+
+function gatherAIContext() {
+  return {
+    mode: S.mode,
+    sheet_name: document.getElementById('cfg-sheet')?.value || null,
+    col_cfg: (S.colCfg||[]).map(c=>({col_idx:c.col_idx, display:c.display, biz_mix_output:c.biz_mix_output,
+      rto_category:c.rto_category, extra_fields:c.extra_fields, enabled:c.enabled})),
+    vg_rows: S.vgRows || [],
+    agent_rows: S.agentRows || [],
+    imd_gwp_rows: S.imdGwpRows || [],
+    norm_rows: S.normRows || [],
+    static_fields: S.staticFields || [],
+    col_defaults: S.colDefaults || [],
+    col_transforms: S.colTransforms || [],
+  };
+}
+
+async function sendAIMessage() {
+  if (AI.busy) return;
+  const input = document.getElementById('ai-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+  aiAddMsg('user', msg);
+  AI.history.push({role:'user', content:msg});
+  AI.busy = true;
+  document.getElementById('ai-send-btn').disabled = true;
+  const body = document.getElementById('ai-body');
+  const typing = document.createElement('div');
+  typing.className = 'ai-typing';
+  typing.innerHTML = '<span></span><span></span><span></span>';
+  body.appendChild(typing);
+  body.scrollTop = body.scrollHeight;
+
+  try {
+    const res = await fetch('/api/ai/chat', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: msg, history: AI.history.slice(-10), context: gatherAIContext()})});
+    const d = await res.json();
+    typing.remove();
+    if (d.error) { aiAddMsg('err', '⚠ ' + d.error); AI.busy=false; document.getElementById('ai-send-btn').disabled=false; return; }
+    aiAddMsg('bot', d.reply || '(no response)');
+    AI.history.push({role:'assistant', content:d.reply || ''});
+    if (d.actions && d.actions.length) {
+      applyAIActions(d.actions);
+      aiAddActionChips(d.actions);
+    }
+    updateAIContextPill();
+    renderAISuggestions();
+  } catch(e) {
+    typing.remove();
+    aiAddMsg('err', '⚠ Could not reach the assistant: ' + e.message);
+  }
+  AI.busy = false;
+  document.getElementById('ai-send-btn').disabled = false;
+}
+
+function applyAIActions(actions) {
+  for (const a of actions) {
+    try {
+      if (a.type === 'set_col_field' && a.col_idx !== undefined) {
+        const row = S.colCfg.find(c=>c.col_idx===a.col_idx);
+        if (row && ['biz_mix_output','rto_category','enabled'].includes(a.field)) {
+          row[a.field] = a.field==='enabled' ? !!a.value : a.value;
+          renderColTable();
+        }
+      } else if (a.type === 'set_extra_field' && a.col_idx !== undefined) {
+        const row = S.colCfg.find(c=>c.col_idx===a.col_idx);
+        if (row) {
+          row.extra_fields = row.extra_fields || {};
+          row.extra_fields[a.key] = a.value;
+          renderColTable();
+        }
+      } else if (a.type === 'add_static_field' && a.col) {
+        S.staticFields.push({col:a.col, val:a.val||''});
+        renderStaticFields();
+      } else if (a.type === 'add_col_default' && a.col) {
+        S.colDefaults.push({col:a.col, val:a.val||''});
+        renderColDefaults();
+      } else if (a.type === 'add_col_transform' && a.col && a.op) {
+        S.colTransforms.push({col:a.col, op:a.op, value:a.value||'1'});
+        renderTransforms();
+      } else if (a.type === 'add_vg_row' && a.vol_rem) {
+        S.vgRows.push({vol_rem:a.vol_rem, ll_col:a.ll_col||'', ul_col:a.ul_col||''});
+        renderVgRows();
+      } else if (a.type === 'add_agent_row' && a.imd_type) {
+        S.agentRows.push({imd_type:a.imd_type, code:a.code||''});
+        renderAgentRows();
+      } else if (a.type === 'add_imd_gwp_row' && a.imd_type) {
+        S.imdGwpRows.push({imd_type:a.imd_type, ll_col:a.ll_col||'', ul_col:a.ul_col||''});
+        renderImdGwpRows();
+      } else if (a.type === 'add_norm_row' && a.from) {
+        S.normRows.push({from:a.from, to:a.to||''});
+        renderNormRows();
+      }
+    } catch(e) { console.error('AI action failed', a, e); }
+  }
+}
+</script>
 
 <script>
 // ──────────────── State ────────────────────────────────────────────────────────

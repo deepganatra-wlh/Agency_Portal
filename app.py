@@ -6,7 +6,7 @@ Flask backend — fully dynamic, config-driven
 from flask import Flask, request, jsonify, send_file, render_template
 import pandas as pd
 import openpyxl
-import os, uuid, traceback, json
+import os, uuid, traceback, json, requests
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -16,6 +16,12 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), 'uploads')
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'outputs')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# ─── AI Assistant (Groq) config ────────────────────────────────────────────────
+# Set your key: export GROQ_API_KEY="gsk_...."   (free, no card — get one at https://console.groq.com/keys)
+GROQ_API_KEY  = os.environ.get('GROQ_API_KEY', 'GROG_API_KEY')
+GROQ_MODEL    = os.environ.get('GROQ_MODEL', 'llama-3.3-70b-versatile')
+GROQ_API_URL  = 'https://api.groq.com/openai/v1/chat/completions'
 
 ALLOWED = {'xlsx', 'xlsb', 'xls', 'csv'}
 def ok_file(f): return '.' in f and f.rsplit('.',1)[1].lower() in ALLOWED
@@ -592,6 +598,144 @@ def apply_output_format(df, output_format):
 # ══════════════════════════════════════════════════════════════
 # API ROUTES
 # ══════════════════════════════════════════════════════════════
+
+# ══════════════════════════════════════════════════════════════
+# AI ASSISTANT
+# ══════════════════════════════════════════════════════════════
+AI_ACTION_TYPES = (
+    'set_col_field', 'set_extra_field', 'add_static_field', 'add_col_default',
+    'add_col_transform', 'add_vg_row', 'add_agent_row', 'add_imd_gwp_row',
+    'add_norm_row', 'navigate', 'none'
+)
+
+def build_ai_system_prompt(context, has_config):
+    mode = context.get('mode', 'special')
+    ctx_json = json.dumps({
+        'mode': mode,
+        'sheet_name': context.get('sheet_name'),
+        'col_cfg': (context.get('col_cfg') or [])[:60],
+        'vg_rows': context.get('vg_rows', []),
+        'agent_rows': context.get('agent_rows', []),
+        'imd_gwp_rows': context.get('imd_gwp_rows', []),
+        'norm_rows': context.get('norm_rows', []),
+        'static_fields': context.get('static_fields', []),
+        'col_defaults': context.get('col_defaults', []),
+        'col_transforms': context.get('col_transforms', []),
+        'has_initial_config': has_config,
+    }, ensure_ascii=False)
+
+    return f"""You are the in-app AI Assistant for "Agency Grid" — the Special Motor Matrix Grid \
+Processor, a tool that converts a wide, multi-header-row Excel commission matrix into a \
+standardized target CSV for insurance agency/broking commissions.
+
+The portal is a 8-step workflow (sidebar steps 1-8):
+1 Upload Files (grid Excel + optional RTO cluster file)
+2 Sheet & Mode (pick sheet, header rows, data start row, start col; choose Special vs Normal mode — \
+Special: cells valued Block/IRDA/MISP/SYSTEM COMMISSION produce an IRDA-outgo row; Normal: those \
+cells are simply skipped)
+3 Column Config — this is the "initial config": each rate column detected in the sheet (col_defs) \
+gets a row with biz_mix_output (the Biz Mix* value to write), rto_category (used for RTO code \
+lookup), extra_fields (a dict of additional output-column overrides, e.g. "Fuel Type*":"Diesel"), \
+and enabled (include/exclude this column)
+4 GWP & Agent Map — vg_rows map a "Volume Consideration" value to GWP LL/UL output column names; \
+agent_rows map IMD Type → Agent Group Code; imd_gwp_rows map IMD Type → its own GWP LL/UL columns \
+for "std-grid" rows
+5 RTO Config — norm_rows normalize category name variants (e.g. "PCV 3W" → "PCV") before RTO lookup
+6 Output Settings — static_fields (column = fixed value for every row), col_defaults (fallback \
+value when a column would otherwise be absent/empty), col_transforms (numeric ops: multiply, \
+divide, add, subtract, round — e.g. multiply "Span Prct*" by 100), and output column order
+7 Process & Export
+8 CSV Merger (a separate tool, unrelated to the main config)
+
+The user's CURRENT state in the app (ground truth — do not assume anything not shown here):
+{ctx_json}
+
+CRITICAL RULE — initial config gate:
+The user can only ask you to EDIT config once they already have a basic initial config loaded — \
+meaning they've run "Inspect Sheet" in Step 2 and Step 3's Column Config table (col_cfg) is \
+populated. "has_initial_config" above tells you whether that's true right now.
+- If has_initial_config is false and the user asks you to edit/add/change something, do NOT return \
+any edit actions. Explain kindly that they should first upload their file and run the sheet \
+inspection in Step 2 so the Column Config table populates, and offer a "navigate" action to Step 2.
+- If has_initial_config is true, you may return concrete edit actions.
+- You can ALWAYS answer general "how do I..." / "where is..." questions regardless of \
+has_initial_config — that never requires an initial config.
+
+You must reply with ONLY a single JSON object (no markdown fences, no prose outside it) matching \
+exactly this shape:
+{{"reply": "<short, friendly, concrete answer, 1-6 sentences>",
+  "actions": [ {{"type": "<one of {', '.join(AI_ACTION_TYPES)}>", ...fields}} ]}}
+
+Action field shapes (only reference col_idx / display values that exist in col_cfg above):
+- set_col_field: {{"type":"set_col_field","col_idx":<int>,"field":"biz_mix_output|rto_category|enabled","value":<string or bool>}}
+- set_extra_field: {{"type":"set_extra_field","col_idx":<int>,"key":"<output column name>","value":"<value>"}} (merges into that column's extra_fields)
+- add_static_field: {{"type":"add_static_field","col":"<output column name>","val":"<value for every row>"}}
+- add_col_default: {{"type":"add_col_default","col":"<output column name>","val":"<fallback value>"}}
+- add_col_transform: {{"type":"add_col_transform","col":"<output column name>","op":"multiply|divide|add|subtract|round","value":"<number>"}}
+- add_vg_row: {{"type":"add_vg_row","vol_rem":"<volume consideration value>","ll_col":"<GWP LL output col>","ul_col":"<GWP UL output col>"}}
+- add_agent_row: {{"type":"add_agent_row","imd_type":"<IMD Type>","code":"<Agent Group Code>"}}
+- add_imd_gwp_row: {{"type":"add_imd_gwp_row","imd_type":"<IMD Type>","ll_col":"<GWP LL output col>","ul_col":"<GWP UL output col>"}}
+- add_norm_row: {{"type":"add_norm_row","from":"<category variant>","to":"<normalized category>"}}
+- navigate: {{"type":"navigate","step":1-8}}
+- none: {{"type":"none"}} — use when no state change is needed (pure Q&A)
+
+Keep "actions" as an empty array when you're just answering a question. Keep replies concise and \
+concrete; say exactly what you changed rather than being vague."""
+
+
+@app.route('/api/ai/status')
+def ai_status():
+    return jsonify({'configured': bool(GROQ_API_KEY), 'model': GROQ_MODEL})
+
+
+@app.route('/api/ai/chat', methods=['POST'])
+def ai_chat():
+    try:
+        if not GROQ_API_KEY:
+            return jsonify({'error': 'AI Assistant is not configured. Ask your admin to set the '
+                                      'GROQ_API_KEY environment variable on the server (free key at '
+                                      'console.groq.com/keys), then restart it.'}), 400
+        d = request.json or {}
+        user_msg = (d.get('message') or '').strip()
+        if not user_msg:
+            return jsonify({'error': 'Empty message'}), 400
+        history = d.get('history') or []
+        context = d.get('context') or {}
+        has_config = bool(context.get('col_cfg'))
+
+        messages = [{'role': 'system', 'content': build_ai_system_prompt(context, has_config)}]
+        for h in history[-10:]:
+            if h.get('role') in ('user', 'assistant') and h.get('content'):
+                messages.append({'role': h['role'], 'content': str(h['content'])[:4000]})
+        messages.append({'role': 'user', 'content': user_msg})
+
+        resp = requests.post(GROQ_API_URL,
+            headers={'Authorization': f'Bearer {GROQ_API_KEY}', 'Content-Type': 'application/json'},
+            json={'model': GROQ_MODEL, 'messages': messages, 'temperature': 0.2,
+                  'response_format': {'type': 'json_object'}},
+            timeout=60)
+        if resp.status_code >= 400:
+            return jsonify({'error': f'Groq API error ({resp.status_code}): {resp.text[:300]}'}), 502
+        data = resp.json()
+        raw = data['choices'][0]['message']['content']
+        try:
+            parsed = json.loads(raw)
+        except Exception:
+            parsed = {'reply': raw, 'actions': []}
+
+        actions = parsed.get('actions') or []
+        if not isinstance(actions, list):
+            actions = []
+        actions = [a for a in actions if isinstance(a, dict) and a.get('type') in AI_ACTION_TYPES]
+        if not has_config:
+            actions = [a for a in actions if a.get('type') in ('navigate', 'none')]
+
+        return jsonify({'reply': parsed.get('reply', ''), 'actions': actions, 'has_config': has_config})
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Could not reach Groq API: {e}'}), 502
+    except Exception as e:
+        return jsonify({'error': str(e), 'trace': traceback.format_exc()}), 500
+
 
 @app.route('/')
 def index(): return render_template('index.html')
