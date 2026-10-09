@@ -1,0 +1,847 @@
+{
+ "_about": "Golden rules for 'Special Motor Matrix - Comp' grids. Independent of the portal config: the checker rebuilds the expected grid from the source sheet using ONLY this file. Edit this file when the business rule changes, not when the portal config changes.",
+ "_name": "Special Matrix - Comp",
+ "grid_type": "Special Matrix - Comp",
+ "std_grid_volume_rules": [
+  {
+   "agent_group": "Agency",
+   "biz_mix_match": "starts_with",
+   "biz_mix_value": "PVT CAR",
+   "target": "Totalgwp Pvt Car",
+   "enabled": true,
+   "note": "Agency + any Pvt Car Biz Mix"
+  },
+  {
+   "agent_group": "Agency",
+   "biz_mix_match": "any",
+   "biz_mix_value": "",
+   "target": "Totalgwp Keybrok Agency",
+   "enabled": true,
+   "note": "Agency default"
+  },
+  {
+   "agent_group": "Key_Broking",
+   "biz_mix_match": "starts_with",
+   "biz_mix_value": "TP",
+   "target": "Totalgwp Satp",
+   "enabled": true,
+   "note": "Key Broking + TP Biz Mix"
+  },
+  {
+   "agent_group": "Key_Broking",
+   "biz_mix_match": "any",
+   "biz_mix_value": "",
+   "target": "Total Gwp",
+   "enabled": true,
+   "note": "Key Broking default"
+  },
+  {
+   "agent_group": "Prime_Broking",
+   "biz_mix_match": "any",
+   "biz_mix_value": "",
+   "target": "Total Gwp",
+   "enabled": true,
+   "note": "Prime Broking default"
+  }
+ ],
+ "volume_consideration_map": {
+  "TRACTOR OLD": "Totalgwp Tractorold",
+  "TRACTOR NEW": "Totalgwp Tractornew",
+  "TOTAL MOTOR VOLUME": "Total Motor Volume",
+  "GCV 12T - 20T": "Totalgwp 12 20t Comp",
+  "GCV 20T - 40T": "Totalgwp 20 40t Comp",
+  "GCV > 40T": "Totalgwp Gcvgreater40t",
+  "GCV 7.5T - 12T": "Totalgwp 7500 12000",
+  "PVT CAR(1+1)": "Totalgwp Pvtcar1plus1",
+  "TRACTOR": "Totalgwp Tractor",
+  "_note": "Verified on Sep-26 final: TRACTOR OLD, TRACTOR NEW, TOTAL MOTOR VOLUME, GCV 20T - 40T, PCV-BUS (\u2192 Totalgwp Tractor, confirmed by business). From portal config: GCV 12T - 20T. Inferred from column names, not yet seen in a source: GCV > 40T, GCV 7.5T - 12T, PVT CAR(1+1), TRACTOR.",
+  "PCV-BUS": "Totalgwp Tractor"
+ },
+ "bizmix_consideration_map": {
+  "GCV 20T - 40T": "Prct Vol Gcv 20t To 40t",
+  "TRACTOR OLD": "Prct Vol Tractor Old",
+  "PCV 3W NEW": "Prct Vol Pcv 3w New"
+ },
+ "imd_type_map": {
+  "Agency": {
+   "agent_group": "Agency"
+  },
+  "Key Broking": {
+   "agent_group": "Key_Broking"
+  },
+  "Prime Broking": {
+   "agent_group": "Prime_Broking"
+  }
+ },
+ "checks": {
+  "S13e": {
+   "enabled": true,
+   "severity": "WARN"
+  },
+  "S14": {
+   "enabled": true,
+   "severity": "WARN"
+  }
+ },
+ "expected_columns": [
+  "Version Id*",
+  "Parent Agent Code*",
+  "Primary Agent Code*",
+  "Agent Group Code*",
+  "Biz Mix*",
+  "Ncb Ll*",
+  "Ncb Ul*",
+  "Vehicle Age Ll*",
+  "Vehicle Age Ul*",
+  "Bus Type*",
+  "Detriff Discount Ll*",
+  "Detriff Discount Ul*",
+  "Two Wheeler Category*",
+  "Type Of Business*",
+  "Fuel Type*",
+  "Rto Cluster*",
+  "Rto Code*",
+  "Cubic Capacity Ll*",
+  "Cubic Capacity Ul*",
+  "Total Gwp Ll*",
+  "Total Gwp Ul*",
+  "Totalgwp Keybrok Agency Ll*",
+  "Totalgwp Keybrok Agency Ul*",
+  "Totalgwp Satp Ll*",
+  "Totalgwp Satp Ul*",
+  "Totalgwp Tractor Ll*",
+  "Totalgwp Tractor Ul*",
+  "Totalgwp Pvt Car Ll*",
+  "Totalgwp Pvt Car Ul*",
+  "Totalgwp Tractorold Ll*",
+  "Totalgwp Tractorold Ul*",
+  "Gcv Combinedvol Ll*",
+  "Gcv Combinedvol Ul*",
+  "Totalgwp Tp12 20t Ll*",
+  "Totalgwp Tp12 20t Ul*",
+  "Totalgwp Tractornew Ll*",
+  "Totalgwp Tractornew Ul*",
+  "Gcv Tpless2500 Total Gwp Ll*",
+  "Gcv Tpless2500 Total Gwp Ul*",
+  "Totalgwp 12 20t Comp Ll*",
+  "Totalgwp 12 20t Comp Ul*",
+  "Totalgwp 20 40t Comp Ll*",
+  "Totalgwp 20 40t Comp Ul*",
+  "Totalgwp 7500 12000 Ll*",
+  "Totalgwp 7500 12000 Ul*",
+  "Totalgwp Pvtcar1plus1 Ll*",
+  "Totalgwp Pvtcar1plus1 Ul*",
+  "Totalgwp Gcvgreater40t Ll*",
+  "Totalgwp Gcvgreater40t Ul*",
+  "Two Wheeler 1 O 1 Ll*",
+  "Two Wheeler 1 O 1 Ul*",
+  "Total Motor Volume Ll*",
+  "Total Motor Volume Ul*",
+  "Tractor Tp Total Gwp Ll*",
+  "Tractor Tp Total Gwp Ul*",
+  "Prct Vol Gcv 20t To 40t Ll*",
+  "Prct Vol Gcv 20t To 40t Ul*",
+  "Prct Vol Tractor Old Ll*",
+  "Prct Vol Tractor Old Ul*",
+  "Prct Vol Pcv 3w New Ll*",
+  "Prct Vol Pcv 3w New Ul*",
+  "Span Prct*",
+  "Span Outgo*",
+  "Pvt Vol Comb Ll*",
+  "Pvt Vol Comb Ul*",
+  "Gcv Vol Comb Ll*",
+  "Gcv Vol Comb Ul*"
+ ],
+ "defaults": {
+  "Parent Agent Code*": "ANY",
+  "Primary Agent Code*": "ANY",
+  "Agent Group Code*": "ANY",
+  "Biz Mix*": "ANY",
+  "Ncb Ll*": "-999",
+  "Ncb Ul*": "999999999",
+  "Vehicle Age Ll*": "-999",
+  "Vehicle Age Ul*": "999999999",
+  "Bus Type*": "ANY",
+  "Detriff Discount Ll*": "0",
+  "Detriff Discount Ul*": "100.001",
+  "Two Wheeler Category*": "ANY",
+  "Type Of Business*": "ANY",
+  "Fuel Type*": "ANY",
+  "Rto Cluster*": "ANY",
+  "Rto Code*": "ANY",
+  "Cubic Capacity Ll*": "-999",
+  "Cubic Capacity Ul*": "999999999",
+  "Total Gwp Ll*": "-999999999",
+  "Total Gwp Ul*": "999999999",
+  "Totalgwp Keybrok Agency Ll*": "-999999999",
+  "Totalgwp Keybrok Agency Ul*": "999999999",
+  "Totalgwp Satp Ll*": "-999999999",
+  "Totalgwp Satp Ul*": "999999999",
+  "Totalgwp Tractor Ll*": "-999999999",
+  "Totalgwp Tractor Ul*": "999999999",
+  "Totalgwp Pvt Car Ll*": "-999999999",
+  "Totalgwp Pvt Car Ul*": "999999999",
+  "Totalgwp Tractorold Ll*": "-999999999",
+  "Totalgwp Tractorold Ul*": "999999999",
+  "Gcv Combinedvol Ll*": "-999999999",
+  "Gcv Combinedvol Ul*": "999999999",
+  "Totalgwp Tp12 20t Ll*": "-999999999",
+  "Totalgwp Tp12 20t Ul*": "999999999",
+  "Totalgwp Tractornew Ll*": "-999999999",
+  "Totalgwp Tractornew Ul*": "999999999",
+  "Gcv Tpless2500 Total Gwp Ll*": "-999999999",
+  "Gcv Tpless2500 Total Gwp Ul*": "999999999",
+  "Totalgwp 12 20t Comp Ll*": "-999999999",
+  "Totalgwp 12 20t Comp Ul*": "999999999",
+  "Totalgwp 20 40t Comp Ll*": "-999999999",
+  "Totalgwp 20 40t Comp Ul*": "999999999",
+  "Totalgwp 7500 12000 Ll*": "-999999999",
+  "Totalgwp 7500 12000 Ul*": "999999999",
+  "Totalgwp Pvtcar1plus1 Ll*": "-999999999",
+  "Totalgwp Pvtcar1plus1 Ul*": "999999999",
+  "Totalgwp Gcvgreater40t Ll*": "-999999999",
+  "Totalgwp Gcvgreater40t Ul*": "999999999",
+  "Two Wheeler 1 O 1 Ll*": "-999999999",
+  "Two Wheeler 1 O 1 Ul*": "999999999",
+  "Total Motor Volume Ll*": "-999999999",
+  "Total Motor Volume Ul*": "999999999",
+  "Tractor Tp Total Gwp Ll*": "-999999999",
+  "Tractor Tp Total Gwp Ul*": "999999999",
+  "Prct Vol Gcv 20t To 40t Ll*": "0",
+  "Prct Vol Gcv 20t To 40t Ul*": "100.001",
+  "Prct Vol Tractor Old Ll*": "0",
+  "Prct Vol Tractor Old Ul*": "100.001",
+  "Pvt Vol Comb Ll*": "-999999999",
+  "Pvt Vol Comb Ul*": "999999999",
+  "Gcv Vol Comb Ll*": "-999999999",
+  "Gcv Vol Comb Ul*": "999999999",
+  "Prct Vol Pcv 3w New Ll*": "0",
+  "Prct Vol Pcv 3w New Ul*": "100.001"
+ },
+ "sheet_layout": {
+  "anchor_label": "IMD Code",
+  "meta_labels": {
+   "imd_code": "IMD Code",
+   "imd_name": "IMD Name",
+   "rel_code": "Relationship Code",
+   "imd_type": "IMD Type",
+   "vol_remark": "Volume Consideration",
+   "bizmix_label": "Biz Mix consideration",
+   "uw_cluster": "UW CLUSTER/OUTGO ON"
+  },
+  "lower_upper_groups": {
+   "vol": "Biz Vol",
+   "discount": "Discount",
+   "bizmix": "Biz Mix"
+  },
+  "skip_rows_where_vol_lower_is": [
+   "Agency"
+  ]
+ },
+ "rate_cell": {
+  "irda_trigger_values": [
+   "Block",
+   "NA",
+   "IRDA",
+   "MISP",
+   "SYSTEM COMMISSION"
+  ],
+  "irda_outgo": "IRDA",
+  "irda_prct": -0.1,
+  "gwp_outgo": "GWP",
+  "scale": 100,
+  "max_decimals": 4,
+  "min_gwp_prct": 1,
+  "max_gwp_prct": 100,
+  "outgo_by_header_label": {
+   "GWP": "GWP",
+   "OD": "OD"
+  },
+  "_note": "outgo_by_header_label: the label in the 3rd header row of each rate column decides Span Outgo*. 'OD' columns appear in Special(different)-1-30 (PVT CAR 1+1/1+3/3+3). CONFIRM the system code for OD-based outgo and change the value if it is not 'OD'."
+ },
+ "percent_band": {
+  "scale": 100,
+  "upper_add": 0.001,
+  "min": 0,
+  "max": 100.001
+ },
+ "column_map": [
+  {
+   "parent": "GCV <=2.5 T",
+   "sub": "GCV <=2.5 T",
+   "biz_mix": "GCV <=2.5 T",
+   "fields": {}
+  },
+  {
+   "parent": "GCV 2.5T - 2.8T",
+   "sub": "GCV 2.5T - 2.8T",
+   "biz_mix": "GCV 2.5T - 2.8T",
+   "fields": {}
+  },
+  {
+   "parent": "GCV 2.8T - 3.5T",
+   "sub": "GCV 2.8T - 3.5T",
+   "biz_mix": "GCV 2.8T - 3.5T",
+   "fields": {}
+  },
+  {
+   "parent": "GCV 3.5T - 7.5T",
+   "sub": "GCV 3.5T - 7.5T",
+   "biz_mix": "GCV 3.5T - 7.5T",
+   "fields": {}
+  },
+  {
+   "parent": "GCV 7.5T - 12T",
+   "sub": "GCV 7.5T - 12T",
+   "biz_mix": "GCV 7.5T - 12T",
+   "fields": {}
+  },
+  {
+   "parent": "GCV 12T - 20T",
+   "sub": "GCV 12T-20T AGE<5",
+   "biz_mix": "GCV 12T - 20T",
+   "fields": {
+    "Vehicle Age Ul*": "5"
+   }
+  },
+  {
+   "parent": "GCV 12T - 20T",
+   "sub": "GCV 12T-20T AGE>=5",
+   "biz_mix": "GCV 12T - 20T",
+   "fields": {
+    "Vehicle Age Ll*": "5"
+   }
+  },
+  {
+   "parent": "GCV 20T - 40T",
+   "sub": "GCV 20T-40T AGE<5",
+   "biz_mix": "GCV 20T - 40T",
+   "fields": {
+    "Vehicle Age Ul*": "5"
+   }
+  },
+  {
+   "parent": "GCV 20T - 40T",
+   "sub": "GCV 20T-40T AGE>=5",
+   "biz_mix": "GCV 20T - 40T",
+   "fields": {
+    "Vehicle Age Ll*": "5"
+   }
+  },
+  {
+   "parent": "GCV > 40T",
+   "sub": "GCV > 40T",
+   "biz_mix": "GCV > 40T",
+   "fields": {}
+  },
+  {
+   "parent": "GCV-3W",
+   "sub": "GCV-3W",
+   "biz_mix": "GCV-3W",
+   "fields": {}
+  },
+  {
+   "parent": "PCV-3W",
+   "sub": "PCV 3W ELECTRIC",
+   "biz_mix": "PCV-3W",
+   "fields": {
+    "Fuel Type*": "Electric,Electric (E-rickshaws), Electricity"
+   }
+  },
+  {
+   "parent": "PCV-3W",
+   "sub": "PCV 3W NEW",
+   "biz_mix": "PCV-3W",
+   "fields": {
+    "Fuel Type*": "Petrol, Diesel,LPG/CNG, Hybrid",
+    "Type Of Business*": "New"
+   }
+  },
+  {
+   "parent": "PCV-3W",
+   "sub": "PCV 3W OLD",
+   "biz_mix": "PCV-3W",
+   "fields": {
+    "Fuel Type*": "Petrol, Diesel,LPG/CNG, Hybrid",
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "PCV-BUS",
+   "sub": "PCV-BUS_OTHER",
+   "biz_mix": "PCV-BUS",
+   "fields": {
+    "Bus Type*": "other bus"
+   }
+  },
+  {
+   "parent": "PCV-BUS",
+   "sub": "PCV-BUS_SCHOOL",
+   "biz_mix": "PCV-BUS",
+   "fields": {
+    "Bus Type*": "school bus"
+   }
+  },
+  {
+   "parent": "PCV-TAXI",
+   "sub": "PCV-TAXI",
+   "biz_mix": "PCV-TAXI",
+   "fields": {}
+  },
+  {
+   "parent": "TRACTOR",
+   "sub": "TRACTOR NEW",
+   "biz_mix": "TRACTOR",
+   "fields": {
+    "Type Of Business*": "New"
+   }
+  },
+  {
+   "parent": "TRACTOR",
+   "sub": "TRACTOR OLD",
+   "biz_mix": "TRACTOR",
+   "fields": {
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "CE",
+   "sub": "CE-CONSTRUCTION EQ",
+   "biz_mix": "CE-CONSTRUCTION EQ",
+   "fields": {}
+  },
+  {
+   "parent": "CE",
+   "sub": "MISC-D OTHERS",
+   "biz_mix": "MISC-D OTHERS",
+   "fields": {}
+  },
+  {
+   "parent": "CE",
+   "sub": "MISC-D GARBAGE",
+   "biz_mix": "MISC-D GARBAGE",
+   "fields": {}
+  },
+  {
+   "parent": "CE",
+   "sub": "HARVESTER NEW",
+   "biz_mix": "HARVESTER",
+   "fields": {
+    "Type Of Business*": "New"
+   }
+  },
+  {
+   "parent": "CE",
+   "sub": "HARVESTER OLD",
+   "biz_mix": "HARVESTER",
+   "fields": {
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "2W",
+   "sub": "<75CC",
+   "biz_mix": "2W",
+   "fields": {
+    "Cubic Capacity Ul*": "76",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W",
+   "sub": "75-150CC",
+   "biz_mix": "2W",
+   "fields": {
+    "Cubic Capacity Ll*": "76",
+    "Cubic Capacity Ul*": "151",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W",
+   "sub": "150-350CC",
+   "biz_mix": "2W",
+   "fields": {
+    "Cubic Capacity Ll*": "151",
+    "Cubic Capacity Ul*": "351",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W",
+   "sub": ">350CC",
+   "biz_mix": "2W",
+   "fields": {
+    "Cubic Capacity Ll*": "351",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W",
+   "sub": "SCOOTER",
+   "biz_mix": "2W",
+   "fields": {
+    "Two Wheeler Category*": "SCOOTER"
+   }
+  },
+  {
+   "parent": "2W(1+1)",
+   "sub": "<75CC",
+   "biz_mix": "2W(1+1)",
+   "fields": {
+    "Cubic Capacity Ul*": "76",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+1)",
+   "sub": "75-150CC",
+   "biz_mix": "2W(1+1)",
+   "fields": {
+    "Cubic Capacity Ll*": "76",
+    "Cubic Capacity Ul*": "151",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+1)",
+   "sub": "150-350CC",
+   "biz_mix": "2W(1+1)",
+   "fields": {
+    "Cubic Capacity Ll*": "151",
+    "Cubic Capacity Ul*": "351",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+1)",
+   "sub": ">350CC",
+   "biz_mix": "2W(1+1)",
+   "fields": {
+    "Cubic Capacity Ll*": "351",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+1)",
+   "sub": "SCOOTER",
+   "biz_mix": "2W(1+1)",
+   "fields": {
+    "Two Wheeler Category*": "SCOOTER"
+   }
+  },
+  {
+   "parent": "2W(1+5)",
+   "sub": "<75CC",
+   "biz_mix": "2W(1+5)",
+   "fields": {
+    "Cubic Capacity Ul*": "76",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+5)",
+   "sub": "75-150CC",
+   "biz_mix": "2W(1+5)",
+   "fields": {
+    "Cubic Capacity Ll*": "76",
+    "Cubic Capacity Ul*": "151",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+5)",
+   "sub": "150-350CC",
+   "biz_mix": "2W(1+5)",
+   "fields": {
+    "Cubic Capacity Ll*": "151",
+    "Cubic Capacity Ul*": "351",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+5)",
+   "sub": ">350CC",
+   "biz_mix": "2W(1+5)",
+   "fields": {
+    "Cubic Capacity Ll*": "351",
+    "Two Wheeler Category*": "BIKE"
+   }
+  },
+  {
+   "parent": "2W(1+5)",
+   "sub": "SCOOTER",
+   "biz_mix": "2W(1+5)",
+   "fields": {
+    "Two Wheeler Category*": "SCOOTER"
+   }
+  },
+  {
+   "parent": "PVT CAR(1+1)",
+   "sub": "DIESEL & NCB",
+   "biz_mix": "PVT CAR(1+1)",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Ncb Ll*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR(1+1)",
+   "sub": "DIESEL & ZERO NCB",
+   "biz_mix": "PVT CAR(1+1)",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Ncb Ul*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR(1+1)",
+   "sub": "PETROL & NCB",
+   "biz_mix": "PVT CAR(1+1)",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Ncb Ll*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR(1+1)",
+   "sub": "PETROL & ZERO NCB",
+   "biz_mix": "PVT CAR(1+1)",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Ncb Ul*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR(1+3)",
+   "sub": "DIESEL",
+   "biz_mix": "PVT CAR(1+3)",
+   "fields": {
+    "Fuel Type*": "Diesel"
+   }
+  },
+  {
+   "parent": "PVT CAR(1+3)",
+   "sub": "PETROL",
+   "biz_mix": "PVT CAR(1+3)",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid"
+   }
+  },
+  {
+   "parent": "PVT CAR(3+3)",
+   "sub": "ROLLOVER DIESEL & NCB",
+   "biz_mix": "PVT CAR(3+3)",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Ncb Ll*": "1",
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "PVT CAR(3+3)",
+   "sub": "ROLLOVER DIESEL & ZERO NCB",
+   "biz_mix": "PVT CAR(3+3)",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Ncb Ul*": "1",
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "PVT CAR(3+3)",
+   "sub": "ROLLOVER PETROL & NCB",
+   "biz_mix": "PVT CAR(3+3)",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Ncb Ll*": "1",
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "PVT CAR(3+3)",
+   "sub": "ROLLOVER PETROL & ZERO NCB",
+   "biz_mix": "PVT CAR(3+3)",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Ncb Ul*": "1",
+    "Type Of Business*": "Renewal, Roll Over"
+   }
+  },
+  {
+   "parent": "PVT CAR(3+3)",
+   "sub": "NEW DIESEL",
+   "biz_mix": "PVT CAR(3+3)",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Type Of Business*": "New"
+   }
+  },
+  {
+   "parent": "PVT CAR(3+3)",
+   "sub": "NEW PETROL",
+   "biz_mix": "PVT CAR(3+3)",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Type Of Business*": "New"
+   }
+  },
+  {
+   "parent": "PVT CAR",
+   "sub": "PETROL & NCB",
+   "biz_mix": "PVT CAR",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Ncb Ll*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR",
+   "sub": "PETROL & ZERO NCB",
+   "biz_mix": "PVT CAR",
+   "fields": {
+    "Fuel Type*": "Petrol, Electric, Electric (E-carts), Electric (E-rickshaws), Electricity, LPG/CNG, PETROL/LPG, Hybrid",
+    "Ncb Ul*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR",
+   "sub": "DIESEL & NCB",
+   "biz_mix": "PVT CAR",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Ncb Ll*": "1"
+   }
+  },
+  {
+   "parent": "PVT CAR",
+   "sub": "DIESEL & ZERO NCB",
+   "biz_mix": "PVT CAR",
+   "fields": {
+    "Fuel Type*": "Diesel",
+    "Ncb Ul*": "1"
+   }
+  }
+ ],
+ "discount_pair": "Detriff Discount",
+ "volume_pairs": [
+  "Total Gwp",
+  "Totalgwp Keybrok Agency",
+  "Totalgwp Satp",
+  "Totalgwp Tractor",
+  "Totalgwp Pvt Car",
+  "Totalgwp Tractorold",
+  "Gcv Combinedvol",
+  "Totalgwp Tp12 20t",
+  "Totalgwp Tractornew",
+  "Gcv Tpless2500 Total Gwp",
+  "Totalgwp 12 20t Comp",
+  "Totalgwp 20 40t Comp",
+  "Totalgwp 7500 12000",
+  "Totalgwp Pvtcar1plus1",
+  "Totalgwp Gcvgreater40t",
+  "Two Wheeler 1 O 1",
+  "Total Motor Volume",
+  "Tractor Tp Total Gwp",
+  "Pvt Vol Comb",
+  "Gcv Vol Comb"
+ ],
+ "percent_pairs": [
+  "Detriff Discount",
+  "Prct Vol Gcv 20t To 40t",
+  "Prct Vol Tractor Old",
+  "Prct Vol Pcv 3w New"
+ ],
+ "product_attribute_columns": [
+  "Ncb Ll*",
+  "Ncb Ul*",
+  "Vehicle Age Ll*",
+  "Vehicle Age Ul*",
+  "Bus Type*",
+  "Two Wheeler Category*",
+  "Type Of Business*",
+  "Fuel Type*",
+  "Cubic Capacity Ll*",
+  "Cubic Capacity Ul*"
+ ],
+ "allowed_values": {
+  "Agent Group Code*": [
+   "Agency",
+   "Key_Broking",
+   "Prime_Broking"
+  ],
+  "Span Outgo*": [
+   "GWP",
+   "IRDA",
+   "OD"
+  ],
+  "Primary Agent Code*": [
+   "ANY"
+  ]
+ },
+ "agent_code_pattern": "^([A-Z]{3}\\d{7}|ANY)$",
+ "rto": {
+  "sheet": "RTO Vs Cluster",
+  "header_row": 2,
+  "code_col": "RTO CODE",
+  "cluster_col_prefix": "UW CLUSTER"
+ },
+ "blocked_rtos": {
+  "codes": [
+   "MP-49",
+   "MP-20",
+   "MP-21",
+   "MP-22"
+  ],
+  "severity": "WARN",
+  "_note": "Generic Guidelines #9 says these RTOs are blocked for all products. Set severity to ERROR if they must be removed from Rto Code*."
+ },
+ "expected_transforms": {
+  "Span Prct*": {
+   "op": "multiply",
+   "value": 100
+  }
+ },
+ "product_volume_columns": {
+  "Totalgwp Tractor": [
+   "TRACTOR",
+   "PCV-BUS"
+  ],
+  "Totalgwp Tractorold": [
+   "TRACTOR"
+  ],
+  "Totalgwp Tractornew": [
+   "TRACTOR"
+  ],
+  "Totalgwp Pvt Car": [
+   "PVT CAR"
+  ],
+  "Totalgwp Pvtcar1plus1": [
+   "PVT CAR"
+  ],
+  "Two Wheeler 1 O 1": [
+   "2W"
+  ],
+  "Totalgwp 20 40t Comp": [
+   "GCV"
+  ],
+  "Totalgwp 12 20t Comp": [
+   "GCV"
+  ],
+  "Totalgwp 7500 12000": [
+   "GCV"
+  ],
+  "Totalgwp Gcvgreater40t": [
+   "GCV"
+  ],
+  "Tractor Tp Total Gwp": [
+   "TRACTOR"
+  ],
+  "Gcv Tpless2500 Total Gwp": [
+   "GCV"
+  ],
+  "Totalgwp Satp": [
+   "TP"
+  ]
+ }
+}

@@ -139,6 +139,27 @@ tr:hover td{background:rgba(255,255,255,.02);}
 ::-webkit-scrollbar-track{background:var(--s1)}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
 .fade{animation:fadeIn .22s ease;}
+/* ── Grid checker ── */
+.opt-label{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--fn);font-size:12.5px;color:var(--tx);margin:0;cursor:pointer;}
+.verdict{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:13px;border:1px solid;margin-bottom:14px;}
+.verdict b{font-size:17px;font-weight:700;}
+.verdict .v-sub{font-size:11px;font-family:var(--mo);opacity:.8;margin-top:3px;}
+.verdict .v-ic{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;flex-shrink:0;border:2px solid currentColor;}
+.v-fail{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.35);color:var(--ac2);}
+.v-warn{background:rgba(245,158,11,.07);border-color:rgba(245,158,11,.35);color:var(--ac);}
+.v-pass{background:rgba(16,185,129,.07);border-color:rgba(16,185,129,.35);color:var(--ac3);}
+.chip-pu{background:rgba(99,102,241,.12);color:var(--ac4);}
+.chk-filters{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-weight:400;}
+.fbtn.on{border-color:var(--ac);color:var(--ac);}
+.chk-t td{max-width:none;white-space:normal;vertical-align:top;word-break:break-word;}
+.chk-t td:nth-child(5),.chk-t td:nth-child(6){max-width:220px;}
+.chk-t tr.det td{background:var(--s2);font-family:var(--fn);font-size:11.5px;color:var(--t2);line-height:1.6;}
+.chk-t tr.det b{color:var(--tx);}
+.rl-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.rl-tab.on{border-color:var(--ac);color:var(--ac);background:rgba(245,158,11,.08);}
+tr.flash td{animation:flash 1.6s ease;}
+@keyframes flash{0%,40%{background:rgba(245,158,11,.18)}100%{background:transparent}}
+@media(prefers-reduced-motion:reduce){.fade,tr.flash td{animation:none}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:800px){.app{grid-template-columns:1fr}.sidebar{display:none}.panel{padding:14px}.stats-row,.fr3,.fr4{grid-template-columns:1fr 1fr}.fr{grid-template-columns:1fr}}
 
@@ -215,6 +236,9 @@ tr:hover td{background:rgba(255,255,255,.02);}
     <button class="ni" id="ni-7" onclick="goStep(7)"><span class="nb" id="nb-7">7</span>Process &amp; Export</button>
     <div class="nl" style="margin-top:10px">Tools</div>
     <button class="ni" id="ni-8" onclick="goStep(8)"><span class="nb" id="nb-8">⇌</span>CSV Merger</button>
+    <div class="nl" style="margin-top:10px">Quality</div>
+    <button class="ni" id="ni-9" onclick="goStep(9)"><span class="nb" id="nb-9">✓</span>Grid Checker</button>
+    <button class="ni" id="ni-10" onclick="goStep(10)"><span class="nb" id="nb-10">≡</span>Checker Rules</button>
   </nav>
   <div class="sf">
     <div style="font-size:9.5px;color:var(--t3);font-family:var(--mo);margin-bottom:7px">CONFIG PRESETS</div>
@@ -603,6 +627,7 @@ SYSTEM COMMISSION</textarea>
     <div class="card">
       <div class="ct">Download</div>
       <button class="btn btn-gr btn-lg" onclick="dlResult()">↓ Download CSV</button>
+      <button class="btn btn-sec btn-lg" onclick="goStep(9)">✓ After manual changes: check the final file</button>
     </div>
   </div>
   <div class="ar" style="margin-top:10px"><button class="btn btn-sec" onclick="goStep(6)">← Back</button></div>
@@ -704,6 +729,121 @@ SYSTEM COMMISSION</textarea>
       <button class="btn btn-gr btn-lg" onclick="dlMergeResult()">⬇ Download Merged CSV</button>
     </div>
   </div>
+</div>
+
+
+<!-- ── Step 9: Grid Checker ── -->
+<div class="panel" id="p-9">
+  <div class="ph"><h2>Grid Checker</h2>
+    <p>Run this after you have downloaded the output and finished the manual changes. Upload the final file; the checker rebuilds the expected grid from the source sheet using the <b>checker rules</b> and compares every cell.</p>
+  </div>
+
+  <div class="card">
+    <div class="ct">Final grid file <span class="bx bx-am">Required</span></div>
+    <div class="uz" id="uz-chk" ondragover="doDrag(event,'chk')" ondragleave="doDragLeave('chk')"
+         ondrop="event.preventDefault();doDragLeave('chk');if(event.dataTransfer.files[0])chkSetFile(event.dataTransfer.files[0])">
+      <input type="file" id="fi-chk" accept=".csv" onchange="if(this.files[0])chkSetFile(this.files[0])"/>
+      <div class="ui">🧾</div>
+      <h3>Drop the final CSV (after manual changes)</h3>
+      <p>.csv — the file you will upload to the system</p>
+      <div id="fd-chk"></div>
+    </div>
+    <label class="opt-label" id="chk-last-wrap" style="margin-top:10px">
+      <input type="checkbox" id="chk-use-last" onchange="chkRefreshFileState()"/>
+      <span>Check the last portal output instead <span class="hint" style="display:inline">(before manual steps — shows what still needs fixing)</span></span>
+    </label>
+  </div>
+
+  <div class="card">
+    <div class="ct">Check against</div>
+    <div class="fr">
+      <div class="fg"><label>Checker rules</label>
+        <div style="display:flex;gap:8px"><select id="chk-rules"></select>
+          <button class="btn btn-sec btn-sm" onclick="goStep(10)">Edit rules</button></div>
+        <div class="hint">The business rules the grid must follow — kept separate from the portal config.</div>
+      </div>
+      <div class="fg"><label>Expected Version Id <span style="color:var(--t3);text-transform:none">(optional)</span></label>
+        <input type="text" id="chk-version" placeholder="e.g. agency_spl_sep26_Grid_3"/>
+        <div class="hint">Filled from Step 6 when set. Leave blank to only check it is a single value.</div>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Source workbook</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span id="chk-src-name" class="fc" style="margin-top:0">—</span>
+          <label class="btn btn-sec btn-sm" style="margin:0;text-transform:none;letter-spacing:0;font-family:var(--fn)">Use another workbook
+            <input type="file" accept=".xlsx,.xlsb,.xls" style="display:none" onchange="chkUploadSource(this)"/></label>
+        </div>
+      </div>
+      <div class="fg"><label>Source sheet</label><select id="chk-sheet"></select></div>
+    </div>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;margin-top:2px">
+      <label class="opt-label"><input type="checkbox" id="chk-do-source" checked/> Reconcile every cell with the source sheet</label>
+      <label class="opt-label"><input type="checkbox" id="chk-do-config" checked/> Also check the current portal config</label>
+    </div>
+  </div>
+
+  <div class="ar" style="margin-bottom:14px">
+    <button class="btn btn-am btn-lg" id="btn-chk" onclick="runChecker()">✔ Run Grid Checker</button>
+  </div>
+  <div id="chk-status"></div>
+
+  <div id="chk-result" style="display:none" class="fade">
+    <div id="chk-verdict"></div>
+    <div class="stats-row" id="chk-stats"></div>
+    <div class="card">
+      <div class="ct">Findings <span class="bx bx-pu" id="chk-count"></span>
+        <div class="chk-filters">
+          <button class="btn btn-sec btn-xs fbtn on" data-sev="" onclick="chkFilterSev(this)">All</button>
+          <button class="btn btn-sec btn-xs fbtn" data-sev="ERROR" onclick="chkFilterSev(this)">Errors</button>
+          <button class="btn btn-sec btn-xs fbtn" data-sev="WARN" onclick="chkFilterSev(this)">Warnings</button>
+          <button class="btn btn-sec btn-xs fbtn" data-sev="INFO" onclick="chkFilterSev(this)">Info</button>
+          <select id="chk-layer" onchange="renderFindings()" style="width:auto;padding:3px 8px;font-size:11px">
+            <option value="">All layers</option><option>OUTPUT</option><option>SOURCE</option><option>CONFIG</option></select>
+          <input type="text" id="chk-q" placeholder="Search column, value, IMD…" oninput="renderFindings()" style="width:190px;padding:3px 8px;font-size:11px"/>
+        </div>
+      </div>
+      <div class="tw"><table class="chk-t"><thead><tr><th>Severity</th><th>Check</th><th>What</th><th>Column / item</th><th>Expected</th><th>Actual</th><th style="text-align:right">Rows</th></tr></thead>
+        <tbody id="chk-tbody"></tbody></table></div>
+      <div class="hint" style="margin-top:6px">Click a finding to see example rows (source cell → CSV line) and how to fix it.</div>
+    </div>
+    <div class="card" id="chk-mm-card" style="display:none">
+      <div class="ct">Mismatch samples <span class="bx bx-gr">source cell → CSV line in your file</span></div>
+      <div class="tw" style="max-height:320px;overflow:auto" id="chk-mm"></div>
+    </div>
+    <div class="ar">
+      <button class="btn btn-gr btn-lg" onclick="dlCheckReport()">⬇ Download Excel Report</button>
+      <button class="btn btn-sec" onclick="goStep(10)">Adjust checker rules</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Step 10: Checker Rules ── -->
+<div class="panel" id="p-10">
+  <div class="ph"><h2>Checker Rules</h2>
+    <p>What a correct grid looks like. Change these when the <b>business rule</b> changes — not when the portal config changes — so the checker keeps catching config mistakes.</p>
+  </div>
+  <div class="card">
+    <div class="ct">Rules file <span class="bx bx-pu" id="rl-dirty" style="display:none">unsaved changes</span></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <select id="rl-file" style="max-width:300px" onchange="rlLoad(this.value)"></select>
+      <button class="btn btn-am btn-sm" onclick="rlSave()">💾 Save</button>
+      <button class="btn btn-sec btn-sm" onclick="rlSaveAs()">Save as…</button>
+      <button class="btn btn-sec btn-sm" onclick="rlValidate()">Validate</button>
+      <button class="btn btn-sec btn-sm" onclick="rlExport()">⬇ Export</button>
+      <label class="btn btn-sec btn-sm" style="margin:0;cursor:pointer;text-transform:none;letter-spacing:0;font-family:var(--fn)">⬆ Import
+        <input type="file" accept=".json" style="display:none" onchange="rlImport(this)"/></label>
+      <button class="btn btn-sec btn-sm" onclick="rlSeedFromConfig()" title="Start a new rules file from the current portal configuration">Seed from portal config</button>
+      <button class="btn btn-re btn-sm" onclick="rlDelete()" style="margin-left:auto">Delete</button>
+    </div>
+    <div class="fr" style="margin-top:12px">
+      <div class="fg"><label>Display name</label><input type="text" id="rl-name" oninput="R._name=this.value;rlDirty()"/></div>
+      <div class="fg"><label>Grid type</label><input type="text" id="rl-gtype" oninput="R.grid_type=this.value;rlDirty()"/></div>
+    </div>
+    <div id="rl-status"></div>
+  </div>
+  <div class="rl-tabs" id="rl-tabs"></div>
+  <div class="card" id="rl-body"></div>
 </div>
 
 </div><!-- /main -->
@@ -966,7 +1106,7 @@ function setMode(m) {
 
 // ──────────────── Navigation ───────────────────────────────────────────────────
 function goStep(n){
-  for(let i=1;i<=8;i++){
+  for(let i=1;i<=10;i++){
     const p=document.getElementById(`p-${i}`);
     const b=document.getElementById(`ni-${i}`);
     if(p) p.classList.toggle('active',i===n);
@@ -974,6 +1114,8 @@ function goStep(n){
   }
   if(n===7) buildSummary();
   if(n===8) loadOutputsList();
+  if(n===9) initChecker();
+  if(n===10) initRulesEditor();
   window.scrollTo(0,0);
 }
 function markDone(n){document.getElementById(`nb-${n}`)?.closest('.ni').classList.add('done');}
@@ -1603,8 +1745,8 @@ function dlResult(){if(S.result) window.location.href=`/api/download/${S.result.
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 // ──────────────── Export / Import Config ───────────────────────────────────────
-function exportConfig(){
-  const cfg = {
+function buildConfigObject(){
+  return {
     _version: 1,
     _exported: new Date().toISOString(),
     mode: S.mode,
@@ -1669,6 +1811,10 @@ function exportConfig(){
     colTransforms:  S.colTransforms,
     outputFormat:   S.outputFormat,
   };
+}
+
+function exportConfig(){
+  const cfg = buildConfigObject();
 
   const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
   const url  = URL.createObjectURL(blob);
@@ -1993,6 +2139,405 @@ async function runMerge(){
 function dlMergeResult(){
   if(S._mergeResult) window.location.href = `/api/download/${S._mergeResult.output_filename}`;
 }
+</script>
+<script>
+
+// ══════════════════════════════════════════════════════════════════════════════
+// GRID CHECKER (Step 9)
+// ══════════════════════════════════════════════════════════════════════════════
+const CHK = { file:null, source:null, result:null, sev:'', open:{} };
+
+function chkSetFile(f){
+  CHK.file=f;
+  document.getElementById('uz-chk').classList.add('has-file');
+  document.getElementById('fd-chk').innerHTML=`<div class="fc">📄 ${esc(f.name)} (${(f.size/1024/1024).toFixed(1)} MB)</div>`;
+  document.getElementById('chk-use-last').checked=false;
+  chkRefreshFileState();
+}
+function chkRefreshFileState(){
+  const useLast=document.getElementById('chk-use-last').checked;
+  document.getElementById('uz-chk').style.opacity=useLast?'.45':'1';
+}
+
+async function initChecker(){
+  // rules list
+  try{
+    const d=await (await fetch('/api/checker/rules')).json();
+    const sel=document.getElementById('chk-rules'); const cur=sel.value||(R&&R._file)||'special_comp_rules.json';
+    sel.innerHTML=(d.rules||[]).map(r=>`<option value="${esc(r.file)}">${esc(r.name||r.file)} — ${esc(r.file)}</option>`).join('')||'<option value="">(no rules files)</option>';
+    if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+  }catch(e){}
+  // source workbook + sheets
+  const src=CHK.source||(S.filepath?{path:S.filepath,sheets:S.sheets,name:files.main?.name||S.filepath.split(/[\\/]/).pop()}:null);
+  document.getElementById('chk-src-name').textContent=src?('📊 '+src.name):'No workbook — upload one in Step 1 or here';
+  const sh=document.getElementById('chk-sheet');
+  const want=sh.value||document.getElementById('cfg-sheet')?.value;
+  sh.innerHTML=src?src.sheets.map(s=>`<option value="${esc(s)}">${esc(s)}</option>`).join(''):'<option value="">—</option>';
+  if(src&&src.sheets.includes(want)) sh.value=want;
+  document.getElementById('chk-do-source').disabled=!src;
+  if(!src) document.getElementById('chk-do-source').checked=false;
+  // config lint only if a config is loaded
+  const hasCfg=S.colCfg&&S.colCfg.length>0;
+  const cc=document.getElementById('chk-do-config'); cc.disabled=!hasCfg; if(!hasCfg) cc.checked=false;
+  cc.parentElement.title=hasCfg?'':'Load/inspect a config in Steps 2–6 to enable';
+  // version id from Step 6
+  const v=document.getElementById('chk-version');
+  if(!v.value){ const vf=(S.staticFields||[]).find(r=>r.col==='Version Id*'); if(vf) v.value=vf.val; }
+  // last output
+  const lw=document.getElementById('chk-last-wrap');
+  lw.style.display=S.result?.output_filename?'flex':'none';
+  if(!S.result?.output_filename) document.getElementById('chk-use-last').checked=false;
+}
+
+async function chkUploadSource(input){
+  const f=input.files[0]; if(!f) return;
+  const nm=document.getElementById('chk-src-name'); nm.textContent='⏳ Uploading '+f.name+'…';
+  const fd=new FormData(); fd.append('file',f);
+  try{
+    const d=await (await fetch('/api/upload',{method:'POST',body:fd})).json();
+    if(d.error) throw new Error(d.error);
+    CHK.source={path:d.filepath,sheets:d.sheets,name:f.name};
+    document.getElementById('chk-do-source').checked=true;
+    initChecker();
+  }catch(e){nm.textContent='Upload failed: '+e.message;}
+}
+
+async function runChecker(){
+  const useLast=document.getElementById('chk-use-last').checked;
+  const st=document.getElementById('chk-status'); const btn=document.getElementById('btn-chk');
+  if(!useLast&&!CHK.file){st.innerHTML='<div class="sb sb-err">Upload the final CSV first (or tick "check the last portal output").</div>';return;}
+  const fd=new FormData();
+  if(useLast) fd.append('last_output',S.result.output_filename); else fd.append('csv',CHK.file);
+  const src=CHK.source||(S.filepath?{path:S.filepath}:null);
+  if(document.getElementById('chk-do-source').checked&&src){
+    fd.append('source_path',src.path); fd.append('sheet',document.getElementById('chk-sheet').value);
+  }
+  if(document.getElementById('chk-do-config').checked&&S.colCfg.length) fd.append('config_json',JSON.stringify(buildConfigObject()));
+  fd.append('rules_name',document.getElementById('chk-rules').value);
+  const ver=document.getElementById('chk-version').value.trim(); if(ver) fd.append('version_id',ver);
+  btn.disabled=true; btn.innerHTML='<div class="sp"></div> Checking…';
+  const t0=Date.now();
+  const tick=setInterval(()=>{st.innerHTML=`<div class="sb sb-info"><div class="sp"></div> Rebuilding the expected grid and comparing every cell… ${Math.round((Date.now()-t0)/1000)}s (≈30s for 100k rows)</div>`;},500);
+  try{
+    const r=await fetch('/api/checker/run',{method:'POST',body:fd}); const d=await r.json();
+    if(d.error) throw new Error(d.error+(d.errors?'\n• '+d.errors.join('\n• '):''));
+    CHK.result=d; CHK.open={}; st.innerHTML='';
+    renderCheckResult(); markDone(9);
+  }catch(e){ st.innerHTML=`<div class="sb sb-err">❌ ${esc(e.message)}</div>`; }
+  finally{ clearInterval(tick); btn.disabled=false; btn.innerHTML='✔ Run Grid Checker'; }
+}
+
+function renderCheckResult(){
+  const d=CHK.result;
+  const cls=d.verdict==='FAIL'?'v-fail':(d.verdict==='PASS'?'v-pass':'v-warn');
+  const head=d.verdict==='FAIL'?'Do not upload — fix the errors below':(d.verdict==='PASS'?'Grid is correct':'Grid passes, review the warnings');
+  const icon=d.verdict==='FAIL'?'✖':(d.verdict==='PASS'?'✔':'!');
+  document.getElementById('chk-verdict').innerHTML=`<div class="verdict ${cls}"><span class="v-ic">${icon}</span>
+    <div><b>${head}</b><div class="v-sub">${esc(d.meta['Output CSV']||'')} · checked: ${d.layers.map(l=>({OUTPUT:'output file',SOURCE:'source reconciliation',CONFIG:'portal config'})[l]).join(', ')} · rules: ${esc(d.meta['Rules']||'')}</div></div></div>`;
+  const nE=l=>d.findings.filter(f=>f.severity==='ERROR'&&l.includes(f.layer)).length;
+  document.getElementById('chk-stats').innerHTML=`
+    <div class="stat"><div class="val" style="color:var(--ac2)">${nE(['OUTPUT','SOURCE'])}</div><div class="lbl">Errors in the file</div></div>
+    <div class="stat"><div class="val" style="color:${nE(['CONFIG'])?'var(--ac2)':'var(--t2)'}">${d.layers.includes('CONFIG')?nE(['CONFIG']):'–'}</div><div class="lbl">Errors in portal config</div></div>
+    <div class="stat"><div class="val" style="color:var(--ac)">${d.warnings}</div><div class="lbl">Warnings</div></div>
+    <div class="stat"><div class="val">${Number(d.meta.Rows||0).toLocaleString()}</div><div class="lbl">Rows checked</div></div>`;
+  renderFindings();
+  const mm=d.mismatch_samples||[];
+  document.getElementById('chk-mm-card').style.display=mm.length?'block':'none';
+  if(mm.length) document.getElementById('chk-mm').innerHTML=`<table class="chk-t"><thead><tr><th>Source cell</th><th>CSV line</th><th>Column</th><th>Expected</th><th>Actual</th></tr></thead>
+    <tbody>${mm.map(m=>`<tr><td>${esc(m.source_cell)}</td><td>${m.csv_line}</td><td>${esc(m.column)}</td><td style="color:var(--ac3)">${esc(m.expected)}</td><td style="color:var(--ac2)">${esc(m.actual)}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('chk-result').style.display='block';
+}
+
+function chkFilterSev(b){
+  document.querySelectorAll('.fbtn').forEach(x=>x.classList.toggle('on',x===b));
+  CHK.sev=b.dataset.sev; renderFindings();
+}
+function renderFindings(){
+  const d=CHK.result; if(!d) return;
+  const layer=document.getElementById('chk-layer').value; const q=document.getElementById('chk-q').value.toLowerCase();
+  const order={ERROR:0,WARN:1,INFO:2}, LORD={OUTPUT:0,SOURCE:1,CONFIG:2};
+  const rows=d.findings.map((f,i)=>({...f,_i:i}))
+    .filter(f=>(!CHK.sev||f.severity===CHK.sev)&&(!layer||f.layer===layer)&&(!q||JSON.stringify(f).toLowerCase().includes(q)))
+    .sort((a,b)=>order[a.severity]-order[b.severity]||(LORD[a.layer]-LORD[b.layer])||a.check_id.localeCompare(b.check_id)||b.count-a.count);
+  document.getElementById('chk-count').textContent=`${rows.length} of ${d.findings.length}`;
+  const sevChip=s=>`<span class="chip ${s==='ERROR'?'chip-re':s==='WARN'?'chip-am':'chip-pu'}">${s}</span>`;
+  document.getElementById('chk-tbody').innerHTML=rows.map(f=>`
+    <tr class="fr-row" onclick="CHK.open[${f._i}]=!CHK.open[${f._i}];renderFindings()" style="cursor:pointer">
+      <td>${sevChip(f.severity)}</td><td style="color:var(--t3)">${f.layer} ${f.check_id}</td>
+      <td style="font-family:var(--fn);font-size:12px;color:var(--tx)">${esc(f.check)}</td>
+      <td>${esc(f.column)}</td><td style="color:var(--ac3)">${esc(f.expected)}</td><td style="color:var(--ac2)">${esc(f.actual)}</td>
+      <td style="text-align:right;white-space:nowrap">${f.count?f.count.toLocaleString():''}</td></tr>
+    ${CHK.open[f._i]?`<tr class="det"><td></td><td colspan="6">
+      ${f.examples?`<div><b>Where:</b> ${esc(f.examples)}</div>`:''}
+      ${f.fix?`<div style="margin-top:4px"><b>Fix:</b> ${esc(f.fix)}</div>`:''}
+      ${!f.examples&&!f.fix?'<div>No further detail.</div>':''}
+      <div style="margin-top:6px"><a href="#" onclick="event.stopPropagation();rlOpenCheck('${f.check_id}');return false" style="color:var(--ac4)">Change how this check behaves →</a></div>
+    </td></tr>`:''}`).join('')||'<tr><td colspan="7" style="color:var(--t3)">Nothing matches the filter.</td></tr>';
+}
+function dlCheckReport(){ if(CHK.result) window.location.href=`/api/download/${CHK.result.report_filename}`; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHECKER RULES EDITOR (Step 10)
+// ══════════════════════════════════════════════════════════════════════════════
+let R=null;                  // rules being edited
+const RU={};                 // editable arrays for dict sections
+const RLT={};                // table registry: key -> array
+let RL_TAB='std', RL_CATALOG=null, RL_MATCH=['any','equals','starts_with','contains','in_list','regex'];
+const RL_TABS=[['std','STD-GRID volume'],['vcm','Volume consideration'],['bcm','Biz Mix %'],['imd','IMD types'],
+  ['cmap','Column map'],['defs','Columns & defaults'],['logic','Value logic'],['checks','Checks'],['raw','Raw JSON']];
+
+const pairsOf=o=>Object.entries(o||{}).filter(([k])=>!k.startsWith('_')).map(([k,v])=>({k,v}));
+const notesOf=o=>Object.fromEntries(Object.entries(o||{}).filter(([k])=>k.startsWith('_')));
+const listStr=v=>Array.isArray(v)?v.join(', '):(v||'');
+const strList=s=>String(s||'').split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+const lines=s=>String(s||'').split('\n').map(x=>x.trim()).filter(Boolean);
+
+function rlFromRules(){
+  RU.vcm=pairsOf(R.volume_consideration_map); RU.bcm=pairsOf(R.bizmix_consideration_map);
+  RU.imd=pairsOf(R.imd_type_map).map(({k,v})=>({k,v:(v&&v.agent_group)||''}));
+  RU.defs=pairsOf(R.defaults);
+  RU.outgo=pairsOf(R.rate_cell?.outgo_by_header_label);
+  RU.allowed=pairsOf(R.allowed_values).map(({k,v})=>({k,v:listStr(v)}));
+  RU.prodvol=pairsOf(R.product_volume_columns).map(({k,v})=>({k,v:listStr(v)}));
+  R.std_grid_volume_rules=R.std_grid_volume_rules||[];
+  R.column_map=R.column_map||[]; R.checks=R.checks||{};
+}
+function rlCollect(){        // write editable arrays back into R
+  const back=(arr,notes,fn)=>({...notes,...Object.fromEntries(arr.filter(x=>String(x.k).trim()).map(x=>[x.k.trim(),fn?fn(x.v):x.v]))});
+  R.volume_consideration_map=back(RU.vcm,notesOf(R.volume_consideration_map));
+  R.bizmix_consideration_map=back(RU.bcm,notesOf(R.bizmix_consideration_map));
+  R.imd_type_map=back(RU.imd,notesOf(R.imd_type_map),v=>({agent_group:v}));
+  R.defaults=back(RU.defs,{});
+  R.rate_cell=R.rate_cell||{}; R.rate_cell.outgo_by_header_label=back(RU.outgo,{});
+  R.allowed_values=back(RU.allowed,{},strList);
+  R.product_volume_columns=back(RU.prodvol,notesOf(R.product_volume_columns),strList);
+  for(const [k,v] of Object.entries(R.checks)) if(!v||(v.enabled!==false&&!v.severity)) delete R.checks[k];
+  return R;
+}
+function rlDirty(on=true){document.getElementById('rl-dirty').style.display=on?'inline':'none';}
+function rlMsg(html,cls='sb-ok'){document.getElementById('rl-status').innerHTML=`<div class="sb ${cls}" style="margin-top:10px"><div>${html}</div></div>`;}
+
+async function initRulesEditor(selectFile){
+  if(!RL_CATALOG){ try{const c=await (await fetch('/api/checker/catalog')).json(); RL_CATALOG=c.checks; RL_MATCH=c.match_types;}catch(e){RL_CATALOG=[];} }
+  const d=await (await fetch('/api/checker/rules')).json();
+  const sel=document.getElementById('rl-file');
+  sel.innerHTML=(d.rules||[]).map(r=>`<option value="${esc(r.file)}">${esc(r.name||r.file)} — ${esc(r.file)}</option>`).join('');
+  const f=selectFile||(R&&R._file)||sel.value;
+  if(f&&[...sel.options].some(o=>o.value===f)) sel.value=f;
+  if(!R||selectFile) await rlLoad(sel.value); else rlRender();
+}
+async function rlLoad(file){
+  if(!file) return;
+  if(R&&document.getElementById('rl-dirty').style.display!=='none'&&!confirm('Discard unsaved changes?')){document.getElementById('rl-file').value=R._file;return;}
+  const d=await (await fetch(`/api/checker/rules/${encodeURIComponent(file)}`)).json();
+  if(d.error){rlMsg(esc(d.error),'sb-err');return;}
+  R=d.rules; R._file=d.file; rlFromRules(); rlDirty(false); document.getElementById('rl-status').innerHTML=''; rlRender();
+}
+async function rlSave(asFile){
+  if(!R) return;
+  const file=asFile||R._file; const body=JSON.parse(JSON.stringify(rlCollect())); delete body._file;
+  const r=await fetch(`/api/checker/rules/${encodeURIComponent(file)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rules:body})});
+  const d=await r.json();
+  if(d.error){rlMsg(`<div><b>${esc(d.error)}</b>${(d.errors||[]).map(e=>'<br/>• '+esc(e)).join('')}</div>`,'sb-err');return;}
+  R._file=d.file; rlDirty(false);
+  await initRulesEditor(d.file); initChecker();
+  rlMsg(`✓ Saved ${esc(d.file)}${d.warnings?.length?`<br/><span style="color:var(--ac)">${d.warnings.length} warning(s): ${d.warnings.slice(0,4).map(esc).join(' · ')}</span>`:''}`);
+}
+function rlSaveAs(){
+  const n=prompt('Save rules as (file name):',(R?._file||'my_rules.json').replace('.json','_copy.json')); if(!n) return;
+  rlSave(n.endsWith('.json')?n:n+'.json');
+}
+async function rlValidate(){
+  const d=await (await fetch('/api/checker/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rules:rlCollect()})})).json();
+  if(!d.errors.length&&!d.warnings.length) rlMsg('✓ Rules are valid.');
+  else rlMsg(`${d.errors.map(e=>'✖ '+esc(e)).join('<br/>')}${d.errors.length&&d.warnings.length?'<br/>':''}${d.warnings.map(e=>'⚠ '+esc(e)).join('<br/>')}`,d.errors.length?'sb-err':'sb-info');
+}
+async function rlDelete(){
+  if(!R||!confirm(`Delete rules file ${R._file}? (A .bak of the last save stays on the server.)`)) return;
+  await fetch(`/api/checker/rules/${encodeURIComponent(R._file)}`,{method:'DELETE'}); R=null; initRulesEditor();
+}
+function rlExport(){
+  const body=JSON.parse(JSON.stringify(rlCollect())); delete body._file;
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(body,null,1)],{type:'application/json'}));
+  a.download=R._file||'checker_rules.json'; a.click();
+}
+function rlImport(input){
+  const f=input.files[0]; if(!f) return;
+  const rd=new FileReader(); rd.onload=e=>{
+    try{ const r=JSON.parse(e.target.result); if(!r.expected_columns) throw new Error('Not a checker rules file (no expected_columns).');
+      R=r; R._file=f.name; rlFromRules(); rlDirty(); rlRender(); rlMsg(`Imported ${esc(f.name)} — click Save to store it on the server.`,'sb-info');
+    }catch(err){rlMsg(esc(err.message),'sb-err');}
+    input.value='';
+  }; rd.readAsText(f);
+}
+function rlSeedFromConfig(){
+  if(!S.colCfg.length){rlMsg('Load or inspect a portal config first (Steps 2–6).','sb-err');return;}
+  if(!confirm('Create rules from the current portal config?\n\nThe new rules will mirror the config, so the checker cannot catch mistakes in it until you review them. Layout and check settings are kept from the rules file currently open.')) return;
+  const base=R?JSON.parse(JSON.stringify(rlCollect())):{};
+  const cfg=buildConfigObject();
+  const pairBase=c=>String(c||'').replace(/ (Ll|Ul)\*$/,'');
+  const mult=(cfg.colTransforms||[]).filter(t=>t.col==='Span Prct*'&&t.op==='multiply').reduce((a,t)=>a*parseFloat(t.value||1),1);
+  const agent=Object.fromEntries((cfg.agentRows||[]).map(r=>[r.imd_type,r.code]));
+  R={...base,
+    _name:`Seeded from ${cfg.sheet_name||'portal config'}`, grid_type:base.grid_type||cfg.sheet_name,
+    expected_columns:(cfg.outputFormat||[]).map(r=>r.rename||r.col).filter(Boolean),
+    defaults:Object.fromEntries((cfg.colDefaults||[]).filter(r=>!['Span Prct*','Span Outgo*'].includes(r.col)).map(r=>[r.col,r.val])),
+    column_map:(cfg.colCfg||[]).filter(c=>c.enabled&&c.parent_biz).map(c=>({parent:c.parent_biz,sub:c.sub_label,biz_mix:c.biz_mix_output,fields:c.extra_fields||{}})),
+    volume_consideration_map:Object.fromEntries((cfg.vgRows||[]).filter(r=>r.vol_rem).map(r=>[r.vol_rem,pairBase(r.ll_col)])),
+    imd_type_map:Object.fromEntries(Object.entries(agent).map(([k,v])=>[k,{agent_group:v}])),
+    std_grid_volume_rules:(cfg.imdGwpRows||[]).filter(r=>r.imd_type).map(r=>({agent_group:agent[r.imd_type]||r.imd_type,biz_mix_match:'any',biz_mix_value:'',target:pairBase(r.ll_col),enabled:true,note:'seeded from portal'})),
+    rate_cell:{...(base.rate_cell||{}),irda_trigger_values:lines(cfg.ignore_values),irda_outgo:cfg.irda_outgo,gwp_outgo:cfg.norm_outgo,
+               irda_prct:parseFloat(cfg.irda_prct)*mult,scale:mult},
+  };
+  if(!R.bizmix_consideration_map) R.bizmix_consideration_map={};
+  if(!R.volume_pairs) R.volume_pairs=[...new Set(R.expected_columns.filter(c=>/ Ll\*$/.test(c)).map(pairBase))];
+  R._file=(cfg.sheet_name||'seeded').replace(/[^A-Za-z0-9]+/g,'_').toLowerCase()+'_rules.json';
+  rlFromRules(); rlDirty(); rlRender();
+  rlMsg('Seeded. Review every tab (especially STD-GRID volume and Biz Mix %), then use <b>Save as…</b>.','sb-info');
+}
+function rlOpenCheck(id){ RL_TAB='checks'; goStep(10); setTimeout(()=>{const el=document.getElementById('rlc-'+id); if(el){el.scrollIntoView({block:'center'}); el.classList.add('flash');}},250); }
+
+// ── generic editable table ────────────────────────────────────────────────────
+function rlSet(key,i,f,v){ RLT[key][i][f]=v; rlDirty(); }
+function rlAdd(key,tpl){ RLT[key].push(JSON.parse(tpl)); rlDirty(); rlRender(); }
+function rlDel(key,i){ RLT[key].splice(i,1); rlDirty(); rlRender(); }
+function rlMove(key,i,d){ const a=RLT[key]; const j=i+d; if(j<0||j>=a.length) return; [a[i],a[j]]=[a[j],a[i]]; rlDirty(); rlRender(); }
+function rlTable(key,arr,cols,{ordered=false,tpl={},addLabel='+ Add row'}={}){
+  RLT[key]=arr;
+  const cell=(c,row,i)=>{
+    const v=row[c.f]; const on=`oninput="rlSet('${key}',${i},'${c.f}',this.value)"`;
+    if(c.type==='select'){ const opts=[...new Set([...(c.options||[]),...(v?[v]:[])])];
+      return `<select onchange="rlSet('${key}',${i},'${c.f}',this.value)">${opts.map(o=>`<option ${o===v?'selected':''} value="${esc(o)}">${esc(o)}</option>`).join('')}</select>`; }
+    if(c.type==='check') return `<input type="checkbox" ${v!==false?'checked':''} onchange="rlSet('${key}',${i},'${c.f}',this.checked)"/>`;
+    if(c.type==='fields') return `<textarea onchange="RLT['${key}'][${i}].fields=rlParseFields(this.value);rlDirty()">${esc(Object.entries(v||{}).map(([a,b])=>a+'='+b).join('\n'))}</textarea>`;
+    if(c.type==='textarea') return `<textarea ${on}>${esc(v||'')}</textarea>`;
+    return `<input type="text" value="${esc(v??'')}" ${on} placeholder="${esc(c.ph||'')}"/>`;
+  };
+  return `<div class="tw"><table class="cct"><thead><tr>${ordered?'<th style="width:28px">#</th>':''}${cols.map(c=>`<th style="${c.w?'width:'+c.w:''}">${c.label}</th>`).join('')}<th style="width:${ordered?78:34}px"></th></tr></thead><tbody>
+    ${arr.map((row,i)=>`<tr>${ordered?`<td style="color:var(--t3);font-family:var(--mo);font-size:10px;padding-top:9px">${i+1}</td>`:''}${cols.map(c=>`<td>${cell(c,row,i)}</td>`).join('')}
+      <td style="white-space:nowrap">${ordered?`<button class="btn btn-sec btn-xs" onclick="rlMove('${key}',${i},-1)" title="Move up">↑</button><button class="btn btn-sec btn-xs" onclick="rlMove('${key}',${i},1)" title="Move down">↓</button>`:''}<button class="btn btn-re btn-xs" onclick="rlDel('${key}',${i})" title="Remove">✕</button></td></tr>`).join('')}
+    </tbody></table></div>
+    <button class="btn btn-sec btn-sm" style="margin-top:8px" onclick='rlAdd("${key}",${JSON.stringify(JSON.stringify(tpl)).replace(/'/g,"&#39;")})'>${addLabel}</button>`;
+}
+function rlParseFields(t){ return Object.fromEntries(lines(t).filter(l=>l.includes('=')).map(l=>{const i=l.indexOf('=');return [l.slice(0,i).trim(),l.slice(i+1).trim()];})); }
+function rlSetPath(path,v,type){
+  const ks=path.split('.'); let o=R; for(const k of ks.slice(0,-1)){o[k]=o[k]||{}; o=o[k];}
+  o[ks.at(-1)]=type==='num'?(v===''?null:parseFloat(v)):type==='lines'?lines(v):type==='list'?strList(v):v; rlDirty();
+}
+function rlGet(path){ return path.split('.').reduce((o,k)=>o?.[k],R); }
+function rlField(label,path,type='text',hint=''){
+  let v=rlGet(path); if(type==='lines') v=(v||[]).join('\n'); if(type==='list') v=(v||[]).join(', ');
+  const ctrl=type==='lines'?`<textarea onchange="rlSetPath('${path}',this.value,'lines')">${esc(v)}</textarea>`
+    :`<input type="text" value="${esc(v??'')}" oninput="rlSetPath('${path}',this.value,'${type}')"/>`;
+  return `<div class="fg"><label>${label}</label>${ctrl}${hint?`<div class="hint">${hint}</div>`:''}</div>`;
+}
+
+function rlRender(){
+  if(!R){document.getElementById('rl-body').innerHTML='<div class="hint">No rules file loaded.</div>';return;}
+  document.getElementById('rl-name').value=R._name||''; document.getElementById('rl-gtype').value=R.grid_type||'';
+  document.getElementById('rl-tabs').innerHTML=RL_TABS.map(([k,l])=>`<button class="btn btn-sec btn-sm rl-tab ${k===RL_TAB?'on':''}" onclick="RL_TAB='${k}';rlRender()">${l}</button>`).join('');
+  const volPairs=R.volume_pairs||[]; const pctPairs=R.percent_pairs||[];
+  const agents=[...new Set([...RU.imd.map(x=>x.v),'*'].filter(Boolean))];
+  let h='';
+  if(RL_TAB==='std'){
+    h=`<div class="ct">STD-GRID volume rules <span class="bx bx-pu">top to bottom — the first rule that matches wins</span></div>
+      <div class="sb sb-info" style="font-size:11.5px"><div>For rows whose Volume Consideration is <code>STD-GRID</code>, the volume LL/UL must sit in the column chosen here, based on the row's Agent Group Code and Biz Mix. Put specific rules (e.g. Agency + Pvt Car) <b>above</b> the "any Biz Mix" rule of the same group.</div></div>
+      ${rlTable('std',R.std_grid_volume_rules,[
+        {f:'enabled',label:'On',type:'check',w:'34px'},
+        {f:'agent_group',label:'Agent Group',type:'select',options:agents,w:'150px'},
+        {f:'biz_mix_match',label:'Biz Mix match',type:'select',options:RL_MATCH,w:'130px'},
+        {f:'biz_mix_value',label:'Biz Mix value',ph:'e.g. PVT CAR  /  TP  /  2W, 2W(1+1)'},
+        {f:'target',label:'Volume column (LL/UL pair)',type:'select',options:volPairs,w:'220px'},
+        {f:'note',label:'Note'}],
+        {ordered:true,tpl:{enabled:true,agent_group:agents[0]||'Agency',biz_mix_match:'starts_with',biz_mix_value:'',target:volPairs[0]||'',note:''},addLabel:'+ Add rule'})}
+      <div class="hint" style="margin-top:8px">Match types: <b>any</b> (all Biz Mix) · <b>starts_with</b> · <b>contains</b> · <b>equals</b> · <b>in_list</b> (comma-separated) · <b>regex</b>. Case-insensitive. Agent Group <b>*</b> = every group.</div>
+      <div class="card" style="margin:14px 0 0;background:var(--s2)"><div class="ct" style="margin-bottom:8px">Try it</div>
+        <div class="fr3"><div class="fg"><label>Agent Group</label><input type="text" id="rl-try-ag" value="Agency" oninput="rlTry()"/></div>
+        <div class="fg"><label>Biz Mix</label><input type="text" id="rl-try-bm" value="PVT CAR(1+1)" oninput="rlTry()"/></div>
+        <div class="fg"><label>Goes to</label><div id="rl-try-out" class="fc" style="margin-top:0">—</div></div></div></div>`;
+    setTimeout(rlTry,0);
+  } else if(RL_TAB==='vcm'){
+    h=`<div class="ct">Volume Consideration → volume column</div>
+      <div class="hint" style="margin-bottom:10px">Non-STD-GRID values from the "Volume Consideration" column. Matching ignores case and spaces (<code>GCV 20T-40T</code> = <code>GCV 20T - 40T</code>).</div>
+      ${rlTable('vcm',RU.vcm,[{f:'k',label:'Volume Consideration (as in sheet)'},{f:'v',label:'Volume column (LL/UL pair)',type:'select',options:volPairs,w:'260px'}],{tpl:{k:'',v:volPairs[0]||''}})}
+      ${R.volume_consideration_map?._note?`<div class="hint" style="margin-top:10px">Note: ${esc(R.volume_consideration_map._note)}</div>`:''}`;
+  } else if(RL_TAB==='bcm'){
+    h=`<div class="ct">Biz Mix consideration → Prct Vol column</div>
+      <div class="hint" style="margin-bottom:10px">The "Biz Mix consideration" label (e.g. <code>TRACTOR OLD on Overall Motor Biz</code>) decides which Prct Vol pair gets the Biz Mix Lower/Upper. Matched by prefix, ignoring case and spaces.</div>
+      ${rlTable('bcm',RU.bcm,[{f:'k',label:'Label starts with'},{f:'v',label:'Prct Vol pair',type:'select',options:pctPairs,w:'260px'}],{tpl:{k:'',v:pctPairs[0]||''}})}
+      <hr class="divider"/>
+      <div class="fr3">${rlField('Percent scale','percent_band.scale','num','0.4 → 40')}${rlField('Add to upper','percent_band.upper_add','num','40 → 40.001')}${rlField('Discount pair','discount_pair','text','Detriff Discount')}</div>`;
+  } else if(RL_TAB==='imd'){
+    h=`<div class="ct">IMD Type → Agent Group Code</div>
+      ${rlTable('imd',RU.imd,[{f:'k',label:'IMD Type (as in sheet)'},{f:'v',label:'Agent Group Code',w:'260px'}],{tpl:{k:'',v:''}})}`;
+  } else if(RL_TAB==='cmap'){
+    h=`<div class="ct">Grid columns → Biz Mix and attributes <span class="bx bx-pu">${R.column_map.length} columns</span></div>
+      <div class="hint" style="margin-bottom:10px">Matched by the two header rows above the GWP/OD label, not by position — so a shifted or new column is detected. Fields: one <code>Column*=value</code> per line.</div>
+      ${rlTable('cmap',R.column_map,[{f:'parent',label:'Header row 1',w:'150px'},{f:'sub',label:'Header row 2',w:'190px'},{f:'biz_mix',label:'Biz Mix*',w:'140px'},{f:'fields',label:'Fields',type:'fields'}],{tpl:{parent:'',sub:'',biz_mix:'',fields:{}},addLabel:'+ Add column'})}`;
+  } else if(RL_TAB==='defs'){
+    h=`<div class="ct">Output template</div>
+      <div class="fr"><div>${rlField('Expected columns, in order (one per line)','expected_columns','lines')}</div>
+      <div>${rlField('Volume LL/UL pairs (base names)','volume_pairs','lines','Used for volume checks')}${rlField('Percent pairs','percent_pairs','lines')}${rlField('Product attribute columns','product_attribute_columns','lines','Used to match rows and in the Biz Mix signature check')}</div></div>
+      <hr class="divider"/><div class="ct">Default values</div>
+      ${rlTable('defs',RU.defs,[{f:'k',label:'Column'},{f:'v',label:'Default value',w:'220px'}],{tpl:{k:'',v:''}})}`;
+  } else if(RL_TAB==='logic'){
+    h=`<div class="ct">Rate cells</div>
+      <div class="fr3">${rlField('IRDA trigger values (one per line)','rate_cell.irda_trigger_values','lines')}
+        <div>${rlField('IRDA Span Outgo','rate_cell.irda_outgo')}${rlField('IRDA Span Prct (final)','rate_cell.irda_prct','num')}</div>
+        <div>${rlField('Rate scale','rate_cell.scale','num','0.22 → 22')}${rlField('Max decimals','rate_cell.max_decimals','num')}</div></div>
+      <div class="fr3">${rlField('Min rate','rate_cell.min_gwp_prct','num','below → "not ×100"')}${rlField('Max rate','rate_cell.max_gwp_prct','num')}${rlField('Default rate outgo','rate_cell.gwp_outgo')}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--t2);margin:6px 0 8px">Span Outgo by header label (row above the data)</div>
+      ${rlTable('outgo',RU.outgo,[{f:'k',label:'Header label'},{f:'v',label:'Span Outgo*',w:'220px'}],{tpl:{k:'',v:''}})}
+      <hr class="divider"/><div class="ct">Allowed values &amp; formats</div>
+      ${rlTable('allowed',RU.allowed,[{f:'k',label:'Column'},{f:'v',label:'Allowed values (comma-separated)'}],{tpl:{k:'',v:''}})}
+      <div class="fr" style="margin-top:10px">${rlField('Agent code pattern (regex)','agent_code_pattern')}${rlField('Skip source rows where Vol Lower is','sheet_layout.skip_rows_where_vol_lower_is','list')}</div>
+      <hr class="divider"/><div class="ct">Product-specific volume columns</div>
+      <div class="hint" style="margin-bottom:8px">Which Biz Mix may use each volume column (text contained in the Biz Mix). Used by check S06b.</div>
+      ${rlTable('prodvol',RU.prodvol,[{f:'k',label:'Volume column',type:'select',options:volPairs,w:'260px'},{f:'v',label:'Allowed Biz Mix (contains, comma-separated)'}],{tpl:{k:volPairs[0]||'',v:''}})}
+      <hr class="divider"/><div class="ct">RTO</div>
+      <div class="fr4">${rlField('RTO sheet','rto.sheet')}${rlField('Header row','rto.header_row','num')}${rlField('RTO code column','rto.code_col')}${rlField('Cluster column starts with','rto.cluster_col_prefix')}</div>
+      <div class="fr">${rlField('Blocked RTO codes','blocked_rtos.codes','list','Comma-separated')}
+        <div class="fg"><label>If present in a grid</label><select onchange="rlSetPath('blocked_rtos.severity',this.value)">${['WARN','ERROR','INFO'].map(s=>`<option ${rlGet('blocked_rtos.severity')===s?'selected':''}>${s}</option>`).join('')}</select></div></div>`;
+  } else if(RL_TAB==='checks'){
+    const cat=RL_CATALOG||[];
+    h=`<div class="ct">Checks <span class="bx bx-pu">switch off or change severity — ERROR blocks upload</span></div>
+      <div class="tw"><table class="cct"><thead><tr><th style="width:60px">On</th><th style="width:60px">ID</th><th style="width:80px">Layer</th><th>Check</th><th style="width:90px">Default</th><th style="width:130px">Severity</th></tr></thead><tbody>
+      ${cat.map(c=>{const o=R.checks[c.id]||{}; return `<tr id="rlc-${c.id}" style="${o.enabled===false?'opacity:.45':''}">
+        <td><input type="checkbox" ${o.enabled===false?'':'checked'} onchange="rlCheckSet('${c.id}','enabled',this.checked)"/></td>
+        <td style="font-family:var(--mo);font-size:10.5px">${c.id}</td><td style="font-family:var(--mo);font-size:10px;color:var(--t3)">${c.layer}</td>
+        <td style="font-size:12px">${esc(c.title)}</td><td style="font-family:var(--mo);font-size:10px;color:var(--t3)">${c.severity}</td>
+        <td><select onchange="rlCheckSet('${c.id}','severity',this.value)"><option value="">default</option>${['ERROR','WARN','INFO'].map(s=>`<option ${o.severity===s?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;}).join('')}
+      </tbody></table></div>`;
+  } else if(RL_TAB==='raw'){
+    const body=JSON.parse(JSON.stringify(rlCollect())); delete body._file;
+    h=`<div class="ct">Raw JSON <span class="bx bx-am">advanced</span></div>
+      <textarea id="rl-raw" style="min-height:440px">${esc(JSON.stringify(body,null,1))}</textarea>
+      <div class="ar" style="margin-top:8px"><button class="btn btn-sec btn-sm" onclick="rlApplyRaw()">Apply JSON</button></div>`;
+  }
+  document.getElementById('rl-body').innerHTML=h;
+}
+function rlCheckSet(id,f,v){
+  const o=R.checks[id]=R.checks[id]||{};
+  if(f==='enabled') o.enabled=v; else { if(v) o.severity=v; else delete o.severity; }
+  rlDirty(); rlRender();
+}
+function rlApplyRaw(){
+  try{ const f=R._file; R=JSON.parse(document.getElementById('rl-raw').value); R._file=f; rlFromRules(); rlDirty(); RL_TAB='std'; rlRender(); rlMsg('JSON applied — click Save to store it.','sb-info'); }
+  catch(e){ rlMsg('Invalid JSON: '+esc(e.message),'sb-err'); }
+}
+function rlTry(){
+  const out=document.getElementById('rl-try-out'); if(!out) return;
+  const ag=document.getElementById('rl-try-ag').value, bm=document.getElementById('rl-try-bm').value;
+  const n=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const m=(k,v,b)=>{b=String(b||'').trim().toUpperCase(); v=String(v||'').trim().toUpperCase();
+    if(!k||k==='any') return true; if(k==='equals') return b===v; if(k==='starts_with') return b.startsWith(v);
+    if(k==='contains') return b.includes(v); if(k==='in_list') return v.split(',').map(x=>x.trim()).includes(b);
+    if(k==='regex'){try{return new RegExp(v,'i').test(b);}catch(e){return false;}} return false;};
+  const i=R.std_grid_volume_rules.findIndex(x=>x.enabled!==false&&x.target&&(['*',''].includes(x.agent_group||'')||n(x.agent_group)===n(ag))&&m(x.biz_mix_match,x.biz_mix_value,bm));
+  out.innerHTML=i<0?'<span style="color:var(--ac2)">No rule matches → reported as error R03d</span>'
+    :`<b style="color:var(--ac3)">${esc(R.std_grid_volume_rules[i].target)} Ll*/Ul*</b>&nbsp;<span style="color:var(--t3)">(rule ${i+1})</span>`;
+}
+
 </script>
 </body>
 </html>

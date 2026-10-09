@@ -29,6 +29,8 @@ Open **http://localhost:5051** in your browser.
 ```
 agency_portal/
 ├── app.py              # Flask backend — all processing logic
+├── grid_checker.py     # Grid Checker engine (also a CLI)
+├── rules/              # Checker rules files (JSON)
 ├── templates/
 │   └── index.html      # Full portal UI (single-page, no build step)
 ├── uploads/            # Temp uploaded files (auto-created)
@@ -316,6 +318,45 @@ Each output row contains:
 | `Biz Mix*` | From column configuration |
 | Extra fields | Fixed values from column's extra fields config |
 | `Rto Code*` | Comma-separated RTO codes from RTO lookup |
+
+---
+
+## Grid Checker (Steps 9 & 10)
+
+Checks the **final** grid — after the manual changes — before it is uploaded to the system.
+
+**Workflow:** Step 7 → Download CSV → do the manual changes → **Step 9 Grid Checker** → upload the final CSV → Run.
+(Tick *"Check the last portal output instead"* to see, before any manual work, exactly which manual steps are still needed.)
+
+The checker runs three layers and shows a verdict (*Do not upload* / *Passes, review warnings* / *Grid is correct*):
+
+| Layer | What it does |
+|---|---|
+| Output file | The CSV on its own: template columns, leftover `-`/blanks, LL ≥ UL, volume in the wrong or in two columns, un-scaled % values, IRDA value, ×100, Biz Mix + attribute combinations, RTO lists, duplicates |
+| Source reconciliation | Rebuilds the expected grid from the source sheet using the **checker rules** and compares every cell. Each mismatch shows the source cell and the CSV line. |
+| Portal config | Checks the current Steps 2–6 settings against the sheet and the rules (shifted columns, wrong LL/UL pairs, missing defaults, unmapped Volume Considerations, manual steps the portal cannot do) |
+
+Every finding can be expanded for example rows and a fix hint. **Download Excel Report** gives the same as a workbook.
+
+### Checker Rules (Step 10)
+
+The rules describe what a correct grid looks like and are deliberately **separate from the portal config** — if they were
+derived from the config, a wrong config would validate itself. Stored as JSON files in `rules/` (a `.bak` of the previous
+version is kept on every save). Tabs:
+
+- **STD-GRID volume** — ordered rules, first match wins: *Agent Group* + *Biz Mix condition* → volume column.
+  Shipped rules: Agency + Biz Mix starting `PVT CAR` → Totalgwp Pvt Car · Agency → Totalgwp Keybrok Agency ·
+  Key Broking + Biz Mix starting `TP` → Totalgwp Satp · Key Broking → Total Gwp · Prime Broking → Total Gwp.
+  Includes a *Try it* box.
+- **Volume consideration** — non-STD-GRID values → volume column (e.g. `PCV-BUS` → Totalgwp Tractor).
+- **Biz Mix %** — which Prct Vol pair a "… on Overall Motor Biz" label feeds; % scaling.
+- **IMD types**, **Column map** (header → Biz Mix + fields), **Columns & defaults**, **Value logic** (IRDA, rate scale,
+  Span Outgo per header label such as `OD`, allowed values, RTO, blocked RTOs).
+- **Checks** — switch any check off or change its severity (ERROR blocks upload).
+- **Raw JSON**, Import/Export, **Seed from portal config** (starting point for a new grid type — review before use).
+
+The checker engine is `grid_checker.py`; it also runs from the command line:
+`python grid_checker.py --csv final.csv --rules rules/special_comp_rules.json --source grid.xlsx --sheet "…" --report r.xlsx`
 
 ---
 

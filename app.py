@@ -1084,5 +1084,135 @@ def list_outputs():
         return jsonify({'error': str(e)}), 500
 
 
+# ══════════════════════════════════════════════════════════════
+# GRID CHECKER  (validate the final grid after manual steps)
+# ══════════════════════════════════════════════════════════════
+import grid_checker as gc
+
+RULES_DIR = os.path.join(os.path.dirname(__file__), 'rules')
+os.makedirs(RULES_DIR, exist_ok=True)
+
+
+def _rules_path(name):
+    name = secure_filename(name or '')
+    if not name: raise ValueError('Rules name required')
+    if not name.endswith('.json'): name += '.json'
+    return os.path.join(RULES_DIR, name)
+
+
+def _inside(path, folder):
+    return os.path.realpath(path).startswith(os.path.realpath(folder) + os.sep)
+
+
+@app.route('/api/checker/catalog')
+def checker_catalog():
+    return jsonify({'checks': [dict(id=i, layer=l, severity=s, title=t) for i, l, s, t in gc.CHECK_CATALOG],
+                    'match_types': list(gc.MATCH_TYPES)})
+
+
+@app.route('/api/checker/rules')
+def checker_rules_list():
+    out = []
+    for f in sorted(os.listdir(RULES_DIR)):
+        if f.endswith('.json'):
+            try: nm = json.load(open(os.path.join(RULES_DIR, f))).get('_name', '')
+            except Exception: nm = '(unreadable)'
+            out.append({'file': f, 'name': nm, 'modified': os.path.getmtime(os.path.join(RULES_DIR, f))})
+    return jsonify({'rules': out})
+
+
+@app.route('/api/checker/rules/<name>', methods=['GET'])
+def checker_rules_get(name):
+    try:
+        p = _rules_path(name)
+        if not os.path.exists(p): return jsonify({'error': 'Not found'}), 404
+        return jsonify({'file': os.path.basename(p), 'rules': json.load(open(p))})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/checker/rules/<name>', methods=['POST'])
+def checker_rules_save(name):
+    try:
+        rules = (request.json or {}).get('rules')
+        if not isinstance(rules, dict): return jsonify({'error': 'Body must be {"rules": {...}}'}), 400
+        errs, warns = gc.validate_rules(rules)
+        if errs: return jsonify({'error': 'Rules not saved — fix these first', 'errors': errs, 'warnings': warns}), 400
+        p = _rules_path(name)
+        if os.path.exists(p):   # keep one backup of the previous version
+            import shutil; shutil.copyfile(p, p + '.bak')
+        json.dump(rules, open(p, 'w'), indent=1)
+        return jsonify({'success': True, 'file': os.path.basename(p), 'warnings': warns})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/checker/rules/<name>', methods=['DELETE'])
+def checker_rules_delete(name):
+    try:
+        p = _rules_path(name)
+        if os.path.exists(p): os.remove(p)
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/checker/validate', methods=['POST'])
+def checker_rules_validate():
+    errs, warns = gc.validate_rules((request.json or {}).get('rules') or {})
+    return jsonify({'errors': errs, 'warnings': warns})
+
+
+@app.route('/api/checker/run', methods=['POST'])
+def checker_run():
+    """multipart form:
+       csv (file)  OR  last_output (filename in outputs/)
+       source_path (server path from /api/upload)  OR  source (file)      — optional
+       sheet, rules_name | rules_json, config_json (current portal state), version_id — optional"""
+    try:
+        sid = str(uuid.uuid4())[:8]
+        def save(field):
+            f = request.files.get(field)
+            if not f or not f.filename: return None
+            p = os.path.join(UPLOAD_DIR, f'{sid}_chk_{secure_filename(f.filename)}'); f.save(p); return p
+        csv = save('csv')
+        if not csv and request.form.get('last_output'):
+            csv = os.path.join(OUTPUT_DIR, secure_filename(request.form['last_output']))
+            if not os.path.exists(csv): return jsonify({'error': 'Last portal output not found on server'}), 400
+        if not csv: return jsonify({'error': 'Upload the final grid CSV to check'}), 400
+
+        source = save('source')
+        if not source and request.form.get('source_path'):
+            sp = request.form['source_path']
+            if not (_inside(sp, UPLOAD_DIR) and os.path.exists(sp)):
+                return jsonify({'error': 'Source workbook is no longer on the server — upload it again in Step 1'}), 400
+            source = sp
+        sheet = request.form.get('sheet') or None
+
+        if request.form.get('rules_json'):
+            rules = json.loads(request.form['rules_json'])
+        else:
+            rules = json.load(open(_rules_path(request.form.get('rules_name', 'special_comp_rules.json'))))
+        errs, _ = gc.validate_rules(rules)
+        if errs: return jsonify({'error': 'Rules file is invalid', 'errors': errs}), 400
+        config = json.loads(request.form['config_json']) if request.form.get('config_json') else None
+
+        report_fn = f'{sid}_grid_check_report.xlsx'
+        up = request.files.get('csv')
+        label = up.filename if up and up.filename else f"last portal output ({request.form.get('last_output')})"
+        F = gc.run(csv, rules, source, sheet, config, request.form.get('version_id') or None,
+                   os.path.join(OUTPUT_DIR, report_fn), quiet=True, csv_label=label)
+        e = sum(i['severity'] == 'ERROR' for i in F.items); w = sum(i['severity'] == 'WARN' for i in F.items)
+        layers = ['OUTPUT'] + (['SOURCE'] if source and sheet else []) + (['CONFIG'] if config else [])
+        return jsonify({'verdict': 'FAIL' if e else ('PASS_WITH_WARNINGS' if w else 'PASS'),
+                        'errors': e, 'warnings': w, 'layers': layers, 'meta': F.meta,
+                        'findings': F.items, 'mismatch_samples': F.mismatch[:300],
+                        'report_filename': report_fn})
+    except SystemExit as ex:
+        return jsonify({'error': str(ex)}), 400
+    except Exception as ex:
+        return jsonify({'error': str(ex), 'trace': traceback.format_exc()}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5051, host='0.0.0.0')
