@@ -1035,7 +1035,7 @@ def write_report(path, F, meta, mismatch_rows):
     from openpyxl.styles import Font, PatternFill, Alignment
     wb = Workbook()
     base = Font(name='Arial', size=10); bold = Font(name='Arial', size=10, bold=True); hfont = Font(name='Arial', size=10, bold=True, color='FFFFFF')
-    hfill = PatternFill('solid', start_color='1F3864')
+    hfill = PatternFill('solid', start_color='061C3A')
     sev_fill = {ERROR: PatternFill('solid', start_color='F8CBAD'), WARN: PatternFill('solid', start_color='FFE699'), INFO: PatternFill('solid', start_color='DDEBF7')}
     ws = wb.active; ws.title = 'Summary'
     ws['A1'] = 'Grid Checker Report'; ws['A1'].font = Font(name='Arial', size=14, bold=True)
